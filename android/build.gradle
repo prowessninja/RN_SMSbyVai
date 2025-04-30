@@ -6,7 +6,8 @@ buildscript {
         minSdkVersion = 21
         compileSdkVersion = 33
         targetSdkVersion = 33
-
+        kotlinVersion = '1.5.20'
+	//kotlinVersion = '1.9.0'
         // We use NDK 23 which has both M1 support and is the side-by-side NDK version from AGP.
         ndkVersion = "23.1.7779620"
     }
@@ -15,7 +16,23 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:7.3.1")
+        //classpath("com.android.tools.build:gradle:7.3.1")
+	classpath("com.android.tools.build:gradle:7.0.4")
+	//classpath("com.android.tools.build:gradle:7.5.0")
         classpath("com.facebook.react:react-native-gradle-plugin")
+        //classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0")
+	classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.5.20")
     }
 }
+
+allprojects {
+    repositories {
+        mavenCentral()
+        google()
+        maven { url("$rootDir/../node_modules/react-native/android") }
+        maven { url("https://www.jitpack.io") }
+    }
+}
+
+// Uncomment below if using vector icons
+// apply from: "../node_modules/react-native-vector-icons/fonts.gradle"
