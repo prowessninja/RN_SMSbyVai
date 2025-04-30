@@ -5,6 +5,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../context/AuthContext';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import Dashboard from '../screens/Dashboard'; 
 
 const Tab = createBottomTabNavigator();
 
@@ -84,7 +85,7 @@ const TabNavigator = () => {
         }}
       />
       <Tab.Screen name="Settings" children={() => <DummyScreen title="Settings" />} />
-      <Tab.Screen name="Dashboard" children={() => <DummyScreen title="Dashboard (JSON)" />} />
+      <Tab.Screen name="Dashboard" component={Dashboard} />
       <Tab.Screen name="Alerts" children={() => <DummyScreen title="Alerts" />} />
       <Tab.Screen name="Logout" component={LogoutScreen} />
     </Tab.Navigator>
