@@ -20,8 +20,9 @@ const UserCard = ({ user }) => {
         <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
           {user.first_name} {user.last_name}
         </Text>
+        {/* ➤ Add Employee ID */}
         <Text style={styles.identifier} numberOfLines={1} ellipsizeMode="tail">
-          {user.identifier || '-'}
+          Identifier: {user.employee_id || '-'}
         </Text>
 
         {/* Status */}
@@ -34,7 +35,7 @@ const UserCard = ({ user }) => {
         <View style={styles.infoRow}>
           <Icon name="city" size={16} color="#555" />
           <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="tail">
-            {user.city || '-'}
+            {user.address?.city || '-'}
           </Text>
         </View>
 
@@ -59,12 +60,7 @@ const UserCard = ({ user }) => {
         )}
 
         {/* Criteria */}
-        <View style={styles.infoRow}>
-          <Icon name="clipboard-list" size={16} color="#555" />
-          <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="tail">
-            {user.criteria || '-'}
-          </Text>
-        </View>
+        
       </View>
     </TouchableOpacity>
   );
@@ -83,7 +79,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     minHeight: 250,
-    flex: 1, // make sure it fills available column width
+    flex: 1,
   },
   avatar: {
     width: 60,
@@ -102,7 +98,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#777',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   infoRow: {
     flexDirection: 'row',
