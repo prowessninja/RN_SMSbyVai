@@ -4,6 +4,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import TabNavigator from './TabNavigator';
 import ViewProfile from '../screens/ViewProfile';
 import CustomDrawerContent from './CustomDrawerContent'; // ✅ Import your custom drawer
+import UsersScreen from '../screens/UsersScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -15,6 +16,7 @@ const MainDrawer = () => {
       drawerContent={(props) => <CustomDrawerContent {...props} />} // ✅ Use it here
     >
       <Drawer.Screen name="HomeTabs" component={TabNavigator} />
+      <Drawer.Screen name="Users" component={UsersScreen} />
       <Drawer.Screen name="ViewProfile" component={ViewProfile} />
     </Drawer.Navigator>
   );

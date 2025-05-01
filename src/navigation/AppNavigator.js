@@ -6,6 +6,7 @@ import Login from '../screens/Login';                   // up one level to src/s
 import MainDrawer from './DrawerNavigator';             // same folder
 import { AuthProvider, AuthContext } from '../context/AuthContext'; // up one to src/context
 
+
 const Stack = createNativeStackNavigator();
 
 const InnerNavigator = () => {

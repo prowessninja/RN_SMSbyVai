@@ -69,7 +69,7 @@ const menuItems = [
 ];
 
 const CustomDrawerContent = (props) => {
-  const { token } = useContext(AuthContext);
+  const { token, logout } = useContext(AuthContext);
   const [profileImage, setProfileImage] = useState(null);
   const [fullName, setFullName] = useState('');
   const [roleName, setRoleName] = useState('');
@@ -79,7 +79,6 @@ const CustomDrawerContent = (props) => {
     (async () => {
       try {
         const userData = await fetchCurrentUser(token);
-        console.log('Profile image URL:', userData.profile_image);
         setProfileImage(userData.profile_image);
         const name = `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
         setFullName(name || userData.email || 'User');
@@ -90,12 +89,18 @@ const CustomDrawerContent = (props) => {
     })();
   }, [token]);
 
+  const handleLogout = async () => {
+    await AsyncStorage.removeItem('userToken');
+    logout();
+    props.navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+  };
+
   const toggleExpand = (label) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedMenus((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
-  const renderMenu = () => (
+  const renderMenu = () =>
     menuItems.map((item) => {
       const isExpanded = !!expandedMenus[item.label];
       return (
@@ -103,7 +108,9 @@ const CustomDrawerContent = (props) => {
           <TouchableOpacity
             style={styles.menuItem}
             onPress={() =>
-              item.children?.length ? toggleExpand(item.label) : null
+              item.children?.length
+                ? toggleExpand(item.label)
+                : props.navigation.navigate(item.label)
             }
           >
             <Icon name={item.icon} size={20} color="#fff" style={styles.menuIcon} />
@@ -120,7 +127,11 @@ const CustomDrawerContent = (props) => {
           {item.children?.length > 0 && isExpanded && (
             <View style={styles.subMenuContainer}>
               {item.children.map((sub) => (
-                <TouchableOpacity key={sub} style={styles.subMenuItem}>
+                <TouchableOpacity
+                  key={sub}
+                  style={styles.subMenuItem}
+                  onPress={() => props.navigation.navigate(sub)}
+                >
                   <Text style={styles.subMenuItemText}>• {sub}</Text>
                 </TouchableOpacity>
               ))}
@@ -128,15 +139,16 @@ const CustomDrawerContent = (props) => {
           )}
         </View>
       );
-    })
-  );
+    });
 
   return (
     <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerContainer}>
       <View style={styles.headerContainer}>
         <Image
           source={
-            profileImage ? { uri: profileImage } : require('../../assets/avatar.png')
+            profileImage
+              ? { uri: profileImage }
+              : require('../../assets/avatar.png')
           }
           style={styles.avatar}
         />
@@ -157,6 +169,10 @@ const CustomDrawerContent = (props) => {
 
       <View style={styles.divider} />
 
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Text style={styles.logoutText}>Logout</Text>
+      </TouchableOpacity>
+
       <Text style={styles.footerText}>
         Powered by: VisionariesAI Labs, V.2025.01.0001
       </Text>
@@ -165,88 +181,26 @@ const CustomDrawerContent = (props) => {
 };
 
 const styles = StyleSheet.create({
-  drawerContainer: {
-    flex: 1,
-    backgroundColor: '#2d3e83',
-  },
-  headerContainer: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    backgroundColor: '#2d3e83',
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 10,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  greeting: {
-    fontSize: 16,
-    color: '#fff',
-  },
-  username: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  role: {
-    fontSize: 14,
-    color: '#ffca28',
-    marginBottom: 5,
-  },
-  profileButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: '#ffca28',
-    borderRadius: 20,
-    marginTop: 5,
-  },
-  profileButtonText: {
-    color: '#2d3e83',
-    fontWeight: '600',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#fff',
-    marginVertical: 10,
-  },
-  menuContainer: {
-    paddingHorizontal: 10,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  menuIcon: {
-    marginRight: 10,
-  },
-  menuItemText: {
-    fontSize: 16,
-    color: '#fff',
-    flex: 1,
-  },
-  arrowIcon: {
-    marginLeft: 'auto',
-  },
-  subMenuContainer: {
-    paddingLeft: 30,
-  },
-  subMenuItem: {
-    paddingVertical: 6,
-  },
-  subMenuItemText: {
-    fontSize: 14,
-    color: '#e0e0e0',
-  },
-  footerText: {
-    color: '#fff',
-    textAlign: 'center',
-    marginVertical: 20,
-    fontSize: 12,
-  },
+  drawerContainer: { flex: 1, backgroundColor: '#2d3e83' },
+  headerContainer: { alignItems: 'center', paddingVertical: 20 },
+  avatar: { width: 80, height: 80, borderRadius: 40, marginBottom: 10, borderWidth: 2, borderColor: '#fff' },
+  greeting: { fontSize: 16, color: '#fff' },
+  username: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
+  role: { fontSize: 14, color: '#ffca28', marginBottom: 5 },
+  profileButton: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#ffca28', borderRadius: 20 },
+  profileButtonText: { color: '#2d3e83', fontWeight: '600' },
+  divider: { height: 1, backgroundColor: '#fff', marginVertical: 10 },
+  menuContainer: { paddingHorizontal: 10, flexGrow: 1 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  menuIcon: { marginRight: 10 },
+  menuItemText: { fontSize: 16, color: '#fff', flex: 1 },
+  arrowIcon: { marginLeft: 'auto' },
+  subMenuContainer: { paddingLeft: 30 },
+  subMenuItem: { paddingVertical: 6 },
+  subMenuItemText: { fontSize: 14, color: '#e0e0e0' },
+  logoutButton: { padding: 15, backgroundColor: '#f44336', marginHorizontal: 10, borderRadius: 8, marginBottom: 20 },
+  logoutText: { color: '#fff', fontWeight: 'bold', textAlign: 'center' },
+  footerText: { color: '#fff', textAlign: 'center', marginVertical: 10, fontSize: 12 },
 });
 
 export default CustomDrawerContent;
