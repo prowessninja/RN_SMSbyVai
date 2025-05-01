@@ -4,46 +4,13 @@ apply plugin: "com.facebook.react"
 import com.android.build.OutputFile
 
 react {
-    /* Folders */
-    // root = file("../")
-    // reactNativeDir = file("../node_modules/react-native")
-    // codegenDir = file("../node_modules/react-native-codegen")
-    // cliFile = file("../node_modules/react-native/cli.js")
-
-    /* Variants */
-    // debuggableVariants = ["liteDebug", "prodDebug"]
-
-    /* Bundling */
-    // nodeExecutableAndArgs = ["node"]
-    // bundleCommand = "ram-bundle"
-    // bundleConfig = file(../rn-cli.config.js)
-    // bundleAssetName = "MyApplication.android.bundle"
-    // entryFile = file("../js/MyApplication.android.js")
-    // extraPackagerArgs = []
-
-    /* Hermes Commands */
-    // hermesCommand = "$rootDir/my-custom-hermesc/bin/hermesc"
-    // hermesFlags = ["-O", "-output-source-map"]
+    /* Customize if needed */
 }
 
-/**
- * Set this to true to create separate APKs per architecture
- */
 def enableSeparateBuildPerCPUArchitecture = false
-
-/**
- * Set this to true to run Proguard on release builds
- */
 def enableProguardInReleaseBuilds = false
-
-/**
- * Preferred JavaScriptCore flavor (if Hermes disabled)
- */
 def jscFlavor = 'org.webkit:android-jsc:+'
 
-/**
- * Get Native Architectures from gradle.properties
- */
 def reactNativeArchitectures() {
     def value = project.getProperties().get("reactNativeArchitectures")
     return value ? value.split(",") : ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
@@ -79,6 +46,14 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
+                storeFile file(MYAPP_UPLOAD_STORE_FILE)
+                storePassword MYAPP_UPLOAD_STORE_PASSWORD
+                keyAlias MYAPP_UPLOAD_KEY_ALIAS
+                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+            }
+        }
     }
 
     buildTypes {
@@ -86,8 +61,9 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
+            shrinkResources enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }
@@ -121,7 +97,6 @@ dependencies {
     }
 }
 
-// Apply native modules auto-linking
 apply from: file("D:/RNProjects/RN_SMSbyVai/node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
 apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
 applyNativeModulesAppBuildGradle(project)
