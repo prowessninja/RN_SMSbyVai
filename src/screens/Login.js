@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity,
   Alert, Image, ActivityIndicator, StyleSheet,
 } from 'react-native';
+import LottieView from 'lottie-react-native';
 import { AuthContext } from '../context/AuthContext';
 
 const Login = () => {
@@ -43,12 +44,29 @@ const Login = () => {
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require('../../assets/logo.png')}
-        style={styles.logo}
-        resizeMode="contain"
+      {/* Top-right logo and info */}
+      <View style={styles.logoContainer}>
+        <Image
+          source={require('../../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <View style={styles.poweredContainer}>
+          <Text style={styles.poweredText}>Powered By</Text>
+          <Text style={styles.poweredText}>VisionariesAI Labs</Text>
+          <Text style={styles.poweredText}>V.2025.01.0001</Text>
+        </View>
+      </View>
+
+      {/* Center animation */}
+      <LottieView
+        source={require('../../assets/lottie/login.json')}
+        autoPlay
+        loop
+        style={styles.animation}
       />
-      <Text style={styles.title}>Welcome Back</Text>
+
+      <Text style={styles.title}>Welcome to SMS by Vai</Text>
 
       <TextInput
         placeholder="Username"
@@ -90,10 +108,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
+  logoContainer: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    alignItems: 'center',
+  },
   logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 20,
+    width: 60,
+    height: 60,
+    marginBottom: 5,
+  },
+  poweredContainer: {
+    alignItems: 'center',
+  },
+  poweredText: {
+    fontSize: 10,
+    color: '#555',
+    fontStyle: 'italic',
+  },
+  animation: {
+    width: 200,
+    height: 200,
+    marginBottom: 10,
   },
   title: {
     fontSize: 26,
@@ -113,7 +150,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
-    color: '#000', // <-- forces text color to black
+    color: '#000',
   },
   button: {
     width: '100%',
