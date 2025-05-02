@@ -6,6 +6,7 @@ import ViewProfile from '../screens/ViewProfile';
 import UsersScreen from '../screens/UsersScreen';
 import UserDetailsScreen from '../screens/UserDetailsScreen';
 import CustomDrawerContent from './CustomDrawerContent';
+import EditUserScreen from '../screens/EditUserScreen';
 
 const Drawer = createDrawerNavigator();
 const Stack = createNativeStackNavigator();
@@ -15,6 +16,7 @@ function UsersStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="UsersScreen" component={UsersScreen} />
       <Stack.Screen name="UserDetails" component={UserDetailsScreen} />
+      <Stack.Screen name="EditUser" component={EditUserScreen} />
     </Stack.Navigator>
   );
 }

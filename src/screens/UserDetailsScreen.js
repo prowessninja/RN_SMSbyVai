@@ -7,6 +7,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { AuthContext } from '../context/AuthContext';
 import { fetchUserDetails, updateUserDetails } from '../api/userdetails';
+import DynamicForm from '../components/DynamicForm';
 
 const Section = ({ title, children }) => (
   <View style={styles.section}>
@@ -35,6 +36,7 @@ const UserDetailsScreen = () => {
     (async () => {
       try {
         const data = await fetchUserDetails(token, userId);
+        console.log('📦 fetched user data:', data);
         setUser(data);
         setFormData(data);
       } catch (err) {
@@ -74,6 +76,14 @@ const UserDetailsScreen = () => {
         { key: 'blood_group', label: 'Blood Group' },
         { key: 'phone', label: 'Phone' }
       ];
+
+  // ✅ convert sectionConfig array to DynamicForm schema object
+  const dynamicSchema = {
+    properties: sectionConfig.reduce((acc, item) => {
+      acc[item.key] = { type: 'string', title: item.label };
+      return acc;
+    }, {})
+  };
 
   if (loading) {
     return (
@@ -147,17 +157,19 @@ const UserDetailsScreen = () => {
       )}
 
       <View style={styles.actionRow}>
-        <TouchableOpacity style={styles.actionButton} onPress={() => setEditModalVisible(true)}>
-          <Icon name="pencil" size={20} color="#fff" />
-          <Text style={styles.actionText}>Edit Details</Text>
-        </TouchableOpacity>
+      <TouchableOpacity
+  style={styles.actionButton}
+  onPress={() => navigation.navigate('EditUser', { userId })}
+>
+  <Icon name="pencil" size={20} color="#fff" />
+  <Text style={styles.actionText}>Edit Details</Text>
+</TouchableOpacity>
         <TouchableOpacity style={styles.actionButton}>
           <Icon name="file-upload" size={20} color="#fff" />
           <Text style={styles.actionText}>Upload Document</Text>
         </TouchableOpacity>
       </View>
 
-      {/* MODAL */}
       <Modal
         visible={editModalVisible}
         animationType="slide"
@@ -167,15 +179,11 @@ const UserDetailsScreen = () => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Edit Details</Text>
 
-            {sectionConfig.map((field, i) => (
-              <TextInput
-                key={i}
-                style={styles.input}
-                placeholder={field.label}
-                value={formData[field.key] || ''}
-                onChangeText={(text) => handleInputChange(field.key, text)}
-              />
-            ))}
+            <DynamicForm
+              schema={dynamicSchema}
+              data={formData || {}} // ✅ always pass an object
+              onChange={handleInputChange}
+            />
 
             <Section title="Guardian Details">
               {user.guardians.map((g, idx) => (
@@ -183,13 +191,13 @@ const UserDetailsScreen = () => {
                   <TextInput
                     style={styles.input}
                     placeholder="Guardian Name"
-                    value={formData.guardians[idx].first_name || ''}
+                    value={formData.guardians?.[idx]?.first_name || ''}
                     onChangeText={(text) => handleInputChange(`guardians[${idx}].first_name`, text)}
                   />
                   <TextInput
                     style={styles.input}
                     placeholder="Guardian Phone"
-                    value={formData.guardians[idx].contact_number || ''}
+                    value={formData.guardians?.[idx]?.contact_number || ''}
                     onChangeText={(text) => handleInputChange(`guardians[${idx}].contact_number`, text)}
                   />
                 </View>
@@ -202,25 +210,25 @@ const UserDetailsScreen = () => {
                   <TextInput
                     style={styles.input}
                     placeholder="Education Type"
-                    value={formData.education_details[idx].education_type || ''}
+                    value={formData.education_details?.[idx]?.education_type || ''}
                     onChangeText={(text) => handleInputChange(`education_details[${idx}].education_type`, text)}
                   />
                   <TextInput
                     style={styles.input}
                     placeholder="Institution"
-                    value={formData.education_details[idx].institution || ''}
+                    value={formData.education_details?.[idx]?.institution || ''}
                     onChangeText={(text) => handleInputChange(`education_details[${idx}].institution`, text)}
                   />
                   <TextInput
                     style={styles.input}
                     placeholder="Start Date"
-                    value={formData.education_details[idx].start_date || ''}
+                    value={formData.education_details?.[idx]?.start_date || ''}
                     onChangeText={(text) => handleInputChange(`education_details[${idx}].start_date`, text)}
                   />
                   <TextInput
                     style={styles.input}
                     placeholder="End Date"
-                    value={formData.education_details[idx].end_date || ''}
+                    value={formData.education_details?.[idx]?.end_date || ''}
                     onChangeText={(text) => handleInputChange(`education_details[${idx}].end_date`, text)}
                   />
                 </View>
@@ -245,7 +253,6 @@ const UserDetailsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  // existing styles as in your current code
   container: { flex: 1, backgroundColor: '#f4f6f9' },
   wall: { height: 150, backgroundColor: '#2d3e83' },
   backButton: { position: 'absolute', top: 40, left: 20 },

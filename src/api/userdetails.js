@@ -45,4 +45,27 @@ export const updateUserDetails = async (token, id, updatedData) => {
     throw err;
   }
 };
-    
+
+export const fetchUserSchema = async (token) => {
+  const url = `${BASE_URL}/users/`; // adjust this endpoint if needed!
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Token ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`❌ fetchUserSchema ${res.status}:`, body);
+      throw new Error(`Failed to load user schema (${res.status})`);
+    }
+    const schema = await res.json();
+    console.log('✅ fetched user schema:', schema);
+    return schema;
+  } catch (err) {
+    console.error('🔥 fetchUserSchema error:', err);
+    throw err;
+  }
+};
