@@ -5,7 +5,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../context/AuthContext';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import Dashboard from '../screens/Dashboard'; 
+import Dashboard from '../screens/Dashboard';
 
 const Tab = createBottomTabNavigator();
 
@@ -34,32 +34,37 @@ const TabNavigator = () => {
 
   return (
     <Tab.Navigator
+      initialRouteName="Dashboard"
       screenOptions={({ route }) => ({
         headerShown: false,
-
-        // Default icon behavior for non-Menu tabs
-        tabBarIcon: ({ color, size }) => {
+        tabBarIcon: ({ color, size, focused }) => {
           let iconName;
+          let iconColor;
+
           switch (route.name) {
             case 'Settings':
               iconName = 'cog';
+              iconColor = '#f39c12'; // orange
               break;
             case 'Dashboard':
               iconName = 'home';
+              iconColor = '#2ecc71'; // green
               break;
             case 'Alerts':
               iconName = 'bell';
+              iconColor = '#e74c3c'; // red
               break;
             case 'Logout':
               iconName = 'sign-out';
+              iconColor = '#8e44ad'; // purple
               break;
             default:
               iconName = 'circle';
+              iconColor = 'gray';
           }
-          return <Icon name={iconName} size={size} color={color} />;
-        },
 
-        // Tint colors
+          return <Icon name={iconName} size={size} color={iconColor} />;
+        },
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: 'gray',
         tabBarStyle: { display: 'flex' },
@@ -69,7 +74,6 @@ const TabNavigator = () => {
         name="Menu"
         children={() => <DummyScreen title="Menu Placeholder" />}
         options={{
-          // Custom button to open drawer
           tabBarButton: (props) => (
             <TouchableOpacity {...props} onPress={() => navigation.openDrawer()}>
               <Icon

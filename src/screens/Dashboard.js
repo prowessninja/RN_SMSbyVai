@@ -103,6 +103,21 @@ const Dashboard = () => {
       </G>
     ));
 
+  // ✅ Time-based greeting and Lottie selection
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  const getAnimation = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return require('../../assets/lottie/morning.json');
+    if (hour < 17) return require('../../assets/lottie/afternoon.json');
+    return require('../../assets/lottie/evening.json');
+  };
+
   if (loading) {
     return (
       <View style={styles.loaderContainer}>
@@ -114,9 +129,9 @@ const Dashboard = () => {
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.sectionGreeting}>
-        <Text style={styles.greeting}>Hi, {user?.first_name || 'User'}</Text>
+        <Text style={styles.greeting}>{getTimeGreeting()}, {user?.first_name || 'User'}</Text>
         <Text style={styles.role}>{user?.group?.name || 'Role'}</Text>
-        <LottieView source={require('../../assets/lottie/morning.json')} autoPlay loop style={styles.animation} />
+        <LottieView source={getAnimation()} autoPlay loop style={styles.animation} />
       </View>
 
       <View style={styles.sectionSelector}>
