@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   FlatList,
   ActivityIndicator,
@@ -9,6 +9,17 @@ import {
 import UserCard from './UserCard';
 
 const UserCardList = ({ users, loading, onEndReached }) => {
+  const renderItem = useCallback(
+    ({ item }) => (
+      <View style={styles.cardContainer}>
+        <UserCard user={item} />
+      </View>
+    ),
+    []
+  );
+
+  const keyExtractor = useCallback((item) => item.id.toString(), []);
+
   if (loading && users.length === 0) {
     return (
       <View style={styles.centered}>
@@ -28,20 +39,21 @@ const UserCardList = ({ users, loading, onEndReached }) => {
   return (
     <FlatList
       data={users}
-      keyExtractor={(item) => item.id.toString()}
-      renderItem={({ item }) => (
-        <View style={styles.cardContainer}>
-          <UserCard user={item} />
-        </View>
-      )}
+      keyExtractor={keyExtractor}
+      renderItem={renderItem}
       numColumns={2}
       columnWrapperStyle={styles.row}
       onEndReached={onEndReached}
       onEndReachedThreshold={0.5}
       ListFooterComponent={
-        loading ? <ActivityIndicator size="small" color="#007AFF" style={styles.footerLoader} /> : null
+        loading ? (
+          <ActivityIndicator size="small" color="#007AFF" style={styles.footerLoader} />
+        ) : null
       }
       contentContainerStyle={styles.listContent}
+      initialNumToRender={10}
+      windowSize={5}
+      removeClippedSubviews={true}
     />
   );
 };
@@ -85,4 +97,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default UserCardList;
+export default React.memo(UserCardList);

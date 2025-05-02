@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import {
-  View, Text, TextInput, Button,
-  Alert, Image, ActivityIndicator,
+  View, Text, TextInput, TouchableOpacity,
+  Alert, Image, ActivityIndicator, StyleSheet,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 
@@ -9,7 +9,7 @@ const Login = () => {
   const { login } = useContext(AuthContext);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [busy, setBusy]     = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -28,11 +28,9 @@ const Login = () => {
       const data = await res.json();
       console.log('LOGIN RESPONSE:', data);
 
-      // your endpoint might return { access: '…' } not { token: '…' }
       const tokenValue = data.token || data.access;
       if (res.ok && tokenValue) {
         await login(tokenValue);
-        // AppNavigator will switch screens for you
       } else {
         Alert.alert('Login Failed', data.detail || 'Invalid credentials');
       }
@@ -44,32 +42,98 @@ const Login = () => {
   };
 
   return (
-    <View style={{ flex:1, justifyContent:'center',alignItems:'center',padding:20 }}>
+    <View style={styles.container}>
       <Image
         source={require('../../assets/logo.png')}
-        style={{ width:120, height:120, marginBottom:30 }}
+        style={styles.logo}
         resizeMode="contain"
       />
-      <Text style={{ fontSize:24, marginBottom:20 }}>Login</Text>
+      <Text style={styles.title}>Welcome Back</Text>
+
       <TextInput
         placeholder="Username"
         value={username}
         onChangeText={setUsername}
         autoCapitalize="none"
-        style={{ borderWidth:1, width:'100%', marginBottom:10, padding:10 }}
+        style={styles.input}
+        placeholderTextColor="#999"
       />
       <TextInput
         placeholder="Password"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
-        style={{ borderWidth:1, width:'100%', marginBottom:20, padding:10 }}
+        style={styles.input}
+        placeholderTextColor="#999"
       />
-      {busy
-        ? <ActivityIndicator size="large" />
-        : <Button title="Login" onPress={handleLogin} />}
+
+      <TouchableOpacity
+        style={[styles.button, busy && styles.buttonDisabled]}
+        onPress={handleLogin}
+        disabled={busy}
+      >
+        {busy ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Login</Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f4f6f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    marginBottom: 30,
+    color: '#333',
+  },
+  input: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    color: '#000', // <-- forces text color to black
+  },
+  button: {
+    width: '100%',
+    backgroundColor: '#2d3e83',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  buttonDisabled: {
+    backgroundColor: '#999',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});
 
 export default Login;

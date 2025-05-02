@@ -177,6 +177,56 @@ const UserDetailsScreen = () => {
               />
             ))}
 
+            <Section title="Guardian Details">
+              {user.guardians.map((g, idx) => (
+                <View key={idx} style={{ marginBottom: 10 }}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Guardian Name"
+                    value={formData.guardians[idx].first_name || ''}
+                    onChangeText={(text) => handleInputChange(`guardians[${idx}].first_name`, text)}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Guardian Phone"
+                    value={formData.guardians[idx].contact_number || ''}
+                    onChangeText={(text) => handleInputChange(`guardians[${idx}].contact_number`, text)}
+                  />
+                </View>
+              ))}
+            </Section>
+
+            <Section title="Education">
+              {user.education_details.map((edu, idx) => (
+                <View key={idx} style={styles.educationBlock}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Education Type"
+                    value={formData.education_details[idx].education_type || ''}
+                    onChangeText={(text) => handleInputChange(`education_details[${idx}].education_type`, text)}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Institution"
+                    value={formData.education_details[idx].institution || ''}
+                    onChangeText={(text) => handleInputChange(`education_details[${idx}].institution`, text)}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Start Date"
+                    value={formData.education_details[idx].start_date || ''}
+                    onChangeText={(text) => handleInputChange(`education_details[${idx}].start_date`, text)}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="End Date"
+                    value={formData.education_details[idx].end_date || ''}
+                    onChangeText={(text) => handleInputChange(`education_details[${idx}].end_date`, text)}
+                  />
+                </View>
+              ))}
+            </Section>
+
             <TouchableOpacity style={styles.updateButton} onPress={handleUpdate}>
               <Text style={styles.updateButtonText}>Submit</Text>
             </TouchableOpacity>

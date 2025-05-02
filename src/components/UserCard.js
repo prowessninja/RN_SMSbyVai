@@ -3,11 +3,15 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 
-const UserCard = ({ user }) => {
+const UserCard = React.memo(({ user }) => {
   const navigation = useNavigation();
 
+  const handlePress = () => {
+    navigation.navigate('UserDetails', { userId: user.id });
+  };
+
   return (
-    <TouchableOpacity onPress={() => navigation.navigate('UserDetails', { userId: user.id })} activeOpacity={0.8}>
+    <TouchableOpacity onPress={handlePress} activeOpacity={0.8}>
       <View style={styles.card}>
         {/* Profile Image */}
         {user.profile_image ? (
@@ -20,7 +24,6 @@ const UserCard = ({ user }) => {
         <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
           {user.first_name} {user.last_name}
         </Text>
-        {/* ➤ Add Employee ID */}
         <Text style={styles.identifier} numberOfLines={1} ellipsizeMode="tail">
           Identifier: {user.employee_id || '-'}
         </Text>
@@ -40,31 +43,28 @@ const UserCard = ({ user }) => {
         </View>
 
         {/* Email */}
-        {user.email && (
+        {user.email ? (
           <View style={styles.infoRow}>
             <Icon name="email" size={16} color="#007AFF" />
             <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="tail">
               {user.email}
             </Text>
           </View>
-        )}
+        ) : null}
 
         {/* Phone */}
-        {user.phone && (
+        {user.phone ? (
           <View style={styles.infoRow}>
             <Icon name="phone" size={16} color="#4CAF50" />
             <Text style={styles.infoText} numberOfLines={1} ellipsizeMode="tail">
               {user.phone}
             </Text>
           </View>
-        )}
-
-        {/* Criteria */}
-        
+        ) : null}
       </View>
     </TouchableOpacity>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {
