@@ -1,13 +1,12 @@
 import React, { useEffect, useState, useContext } from 'react';
 import {
   View, Text, StyleSheet, Image, ScrollView,
-  TouchableOpacity, ActivityIndicator, Alert, TextInput, Modal
+  TouchableOpacity, ActivityIndicator, Alert
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { AuthContext } from '../context/AuthContext';
-import { fetchUserDetails, updateUserDetails } from '../api/userdetails';
-import DynamicForm from '../components/DynamicForm';
+import { fetchUserDetails } from '../api/userdetails';
 
 const Section = ({ title, children }) => (
   <View style={styles.section}>
@@ -29,8 +28,6 @@ const UserDetailsScreen = () => {
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [formData, setFormData] = useState({});
 
   useEffect(() => {
     (async () => {
@@ -38,7 +35,6 @@ const UserDetailsScreen = () => {
         const data = await fetchUserDetails(token, userId);
         console.log('📦 fetched user data:', data);
         setUser(data);
-        setFormData(data);
       } catch (err) {
         Alert.alert('Error', err.message);
       } finally {
@@ -46,20 +42,6 @@ const UserDetailsScreen = () => {
       }
     })();
   }, [token, userId]);
-
-  const handleInputChange = (field, value) =>
-    setFormData(prev => ({ ...prev, [field]: value }));
-
-  const handleUpdate = async () => {
-    try {
-      const updated = await updateUserDetails(token, userId, formData);
-      setUser(updated);
-      setEditModalVisible(false);
-      Alert.alert('Success', 'User details updated!');
-    } catch (err) {
-      Alert.alert('Error', err.message);
-    }
-  };
 
   const isStudent = user?.group?.name?.toLowerCase() === 'student';
 
@@ -76,14 +58,6 @@ const UserDetailsScreen = () => {
         { key: 'blood_group', label: 'Blood Group' },
         { key: 'phone', label: 'Phone' }
       ];
-
-  // ✅ convert sectionConfig array to DynamicForm schema object
-  const dynamicSchema = {
-    properties: sectionConfig.reduce((acc, item) => {
-      acc[item.key] = { type: 'string', title: item.label };
-      return acc;
-    }, {})
-  };
 
   if (loading) {
     return (
@@ -158,124 +132,46 @@ const UserDetailsScreen = () => {
 
       <View style={styles.actionRow}>
       <TouchableOpacity
-  style={styles.actionButton}
-  onPress={() => navigation.navigate('EditUser', { userId })}
->
-  <Icon name="pencil" size={20} color="#fff" />
-  <Text style={styles.actionText}>Edit Details</Text>
-</TouchableOpacity>
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('EditUser', {
+            userId,
+            userData: user   // ← pass the entire user object
+          })}
+        >
+          <Icon name="pencil" size={20} color="#fff" />
+          <Text style={styles.actionText}>Edit Details</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.actionButton}>
           <Icon name="file-upload" size={20} color="#fff" />
           <Text style={styles.actionText}>Upload Document</Text>
         </TouchableOpacity>
       </View>
-
-      <Modal
-        visible={editModalVisible}
-        animationType="slide"
-        onRequestClose={() => setEditModalVisible(false)}
-      >
-        <ScrollView style={styles.container}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Edit Details</Text>
-
-            <DynamicForm
-              schema={dynamicSchema}
-              data={formData || {}} // ✅ always pass an object
-              onChange={handleInputChange}
-            />
-
-            <Section title="Guardian Details">
-              {user.guardians.map((g, idx) => (
-                <View key={idx} style={{ marginBottom: 10 }}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Guardian Name"
-                    value={formData.guardians?.[idx]?.first_name || ''}
-                    onChangeText={(text) => handleInputChange(`guardians[${idx}].first_name`, text)}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Guardian Phone"
-                    value={formData.guardians?.[idx]?.contact_number || ''}
-                    onChangeText={(text) => handleInputChange(`guardians[${idx}].contact_number`, text)}
-                  />
-                </View>
-              ))}
-            </Section>
-
-            <Section title="Education">
-              {user.education_details.map((edu, idx) => (
-                <View key={idx} style={styles.educationBlock}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Education Type"
-                    value={formData.education_details?.[idx]?.education_type || ''}
-                    onChangeText={(text) => handleInputChange(`education_details[${idx}].education_type`, text)}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Institution"
-                    value={formData.education_details?.[idx]?.institution || ''}
-                    onChangeText={(text) => handleInputChange(`education_details[${idx}].institution`, text)}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Start Date"
-                    value={formData.education_details?.[idx]?.start_date || ''}
-                    onChangeText={(text) => handleInputChange(`education_details[${idx}].start_date`, text)}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="End Date"
-                    value={formData.education_details?.[idx]?.end_date || ''}
-                    onChangeText={(text) => handleInputChange(`education_details[${idx}].end_date`, text)}
-                  />
-                </View>
-              ))}
-            </Section>
-
-            <TouchableOpacity style={styles.updateButton} onPress={handleUpdate}>
-              <Text style={styles.updateButtonText}>Submit</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.updateButton, { backgroundColor: '#f44336' }]}
-              onPress={() => setEditModalVisible(false)}
-            >
-              <Text style={styles.updateButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </Modal>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f4f6f9' },
-  wall: { height: 150, backgroundColor: '#2d3e83' },
+  container: { flex: 1 },
+  wall: { height: 150, backgroundColor: '#007AFF' },
   backButton: { position: 'absolute', top: 40, left: 20 },
   profileContainer: { alignItems: 'center', marginTop: -50 },
-  avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#fff' },
-  basicInfo: { alignItems: 'center', marginTop: 10 },
-  name: { fontSize: 20, fontWeight: 'bold' },
-  role: { fontSize: 16, color: '#555', marginBottom: 4 },
-  infoText: { fontSize: 14, color: '#555' },
-  actionRow: { flexDirection: 'row', justifyContent: 'space-evenly', marginVertical: 10 },
-  actionButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2d3e83', padding: 10, borderRadius: 6 },
-  actionText: { color: '#fff', marginLeft: 6, fontWeight: '600' },
-  section: { backgroundColor: '#fff', padding: 15, margin: 6, borderRadius: 8 },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#2d3e83', marginBottom: 6 },
-  infoRow: { marginVertical: 2 },
-  input: { backgroundColor: '#fff', borderColor: '#ddd', borderWidth: 1, borderRadius: 6, padding: 8, marginVertical: 4 },
-  educationBlock: { marginBottom: 6 },
-  eduDegree: { fontSize: 14, fontWeight: '600', color: '#333' },
-  eduYear: { fontSize: 13, color: '#555' },
-  updateButton: { backgroundColor: '#007AFF', margin: 20, padding: 12, borderRadius: 8, alignItems: 'center' },
-  updateButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  avatar: { width: 100, height: 100, borderRadius: 50 },
+  basicInfo: { alignItems: 'center', marginVertical: 10 },
+  name: { fontSize: 22, fontWeight: 'bold' },
+  role: { fontSize: 16, color: '#555' },
+  section: { margin: 10, padding: 10, backgroundColor: '#f0f0f0', borderRadius: 8 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 },
+  infoText: { fontSize: 16, color: '#333' },
+  educationBlock: { marginBottom: 10 },
+  eduDegree: { fontSize: 16, fontWeight: 'bold' },
+  eduYear: { fontSize: 14, color: '#555' },
+  actionRow: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: 20 },
+  actionButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#007AFF', padding: 10, borderRadius: 8 },
+  actionText: { color: '#fff', marginLeft: 5 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  errorText: { fontSize: 16, color: '#f44336' },
+  errorText: { fontSize: 16, color: 'red' }
 });
 
 export default UserDetailsScreen;

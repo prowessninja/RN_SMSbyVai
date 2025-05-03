@@ -84,8 +84,16 @@ const UsersScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={24} color="#007AFF" />
         </TouchableOpacity>
-        <Icon name="account-group" size={22} color="#007AFF" style={{ marginLeft: 10 }} />
+        <Icon name="account-group" size={24} color="#007AFF" style={{ marginLeft: 10 }} />
         <Text style={styles.title}>Users</Text>
+
+        <TouchableOpacity
+  style={[styles.addButton, { flexDirection: 'row', alignItems: 'center' }]}
+  onPress={() => navigation.navigate('UserScreen', { editMode: false })}
+>
+  <Icon name="account-plus" size={24} color="#007AFF" />
+  <Text style={{ marginLeft: 6, fontSize: 16, color: '#007AFF', fontWeight: '500' }}>Add User</Text>
+</TouchableOpacity>
       </View>
 
       <Text style={styles.filterLabel}>Academic Year</Text>
@@ -109,10 +117,8 @@ const UsersScreen = () => {
         onSelect={item => { setSelectedGroup(item.id); setPage(1); }}
       />
 
-      {/* Separator line */}
       <View style={styles.divider} />
 
-      {/* Search box below filters */}
       <TextInput
         style={styles.searchInput}
         placeholder="Search by name, identifier, contact..."
@@ -120,7 +126,6 @@ const UsersScreen = () => {
         onChangeText={handleSearch}
       />
 
-      {/* Display User Cards in Two Columns with Lazy Load */}
       <UserCardList
         users={users}
         loading={loading}
@@ -150,6 +155,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
     color: '#2d3e83',
+    flex: 1, // pushes addButton to the right
+  },
+  addButton: {
+    marginLeft: 'auto',
   },
   filterLabel: {
     marginTop: 10,
