@@ -133,7 +133,7 @@ const UserDetailsScreen = () => {
       <View style={styles.actionRow}>
       <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => navigation.navigate('EditUser', {
+          onPress={() => navigation.navigate('AddOrEditUser', {
             userId,
             userData: user   // ← pass the entire user object
           })}
