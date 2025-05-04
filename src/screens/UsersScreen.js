@@ -1,5 +1,13 @@
+// src/screens/UsersScreen.js
 import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, StyleSheet, TextInput, ActivityIndicator, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  ActivityIndicator,
+  TouchableOpacity
+} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../context/AuthContext';
@@ -11,6 +19,7 @@ import UserCardList from '../components/UserCardList';
 const UsersScreen = () => {
   const navigation = useNavigation();
   const { token } = useContext(AuthContext);
+
   const [users, setUsers] = useState([]);
   const [years, setYears] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -23,8 +32,9 @@ const UsersScreen = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
 
+  // Load filters (years & branches)
   useEffect(() => {
-    const loadFilters = async () => {
+    (async () => {
       try {
         const [yearData, branchData] = await Promise.all([
           fetchAcademicYears(token),
@@ -37,14 +47,14 @@ const UsersScreen = () => {
       } catch (err) {
         console.error('Error loading filters:', err);
       }
-    };
-    loadFilters();
+    })();
   }, [token]);
 
+  // Load users whenever filters/search/page change
   useEffect(() => {
-    const loadUsers = async () => {
+    (async () => {
+      setLoading(true);
       try {
-        setLoading(true);
         const filters = {
           academic_year: selectedYear,
           branch: selectedBranch,
@@ -53,33 +63,33 @@ const UsersScreen = () => {
           page,
           page_size: 10,
         };
-        const data = await fetchUsersList(token, filters);
-        const newUsers = data.results || [];
-        setUsers(prev => page === 1 ? newUsers : [...prev, ...newUsers]);
-        setHasMore(!!data.next);
+        const { results = [], next, } = await fetchUsersList(token, filters);
+        setUsers(prev => page === 1 ? results : [...prev, ...results]);
+        setHasMore(!!next);
+        // rebuild group list from current page
         setGroups(
-          [...new Map(newUsers.map(u => [u.group?.id, u.group])).values()].filter(Boolean)
+          [...new Map(results.map(u => [u.group?.id, u.group])).values()].filter(Boolean)
         );
       } catch (err) {
         console.error('Error loading users:', err);
       } finally {
         setLoading(false);
       }
-    };
-    loadUsers();
+    })();
   }, [token, selectedYear, selectedBranch, selectedGroup, searchText, page]);
 
   const handleLoadMore = () => {
     if (hasMore && !loading) setPage(p => p + 1);
   };
 
-  const handleSearch = (text) => {
+  const handleSearch = text => {
     setSearchText(text);
     setPage(1);
   };
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={24} color="#007AFF" />
@@ -87,15 +97,17 @@ const UsersScreen = () => {
         <Icon name="account-group" size={24} color="#007AFF" style={{ marginLeft: 10 }} />
         <Text style={styles.title}>Users</Text>
 
+        {/* Add User button */}
         <TouchableOpacity
-  style={[styles.addButton, { flexDirection: 'row', alignItems: 'center' }]}
-  onPress={() => navigation.navigate('UserScreen', { editMode: false })}
->
-  <Icon name="account-plus" size={24} color="#007AFF" />
-  <Text style={{ marginLeft: 6, fontSize: 16, color: '#007AFF', fontWeight: '500' }}>Add User</Text>
-</TouchableOpacity>
+          style={[styles.addButton, { flexDirection: 'row', alignItems: 'center' }]}
+          onPress={() => navigation.navigate('AddUser')}
+        >
+          <Icon name="account-plus" size={24} color="#007AFF" />
+          <Text style={styles.addText}>Add User</Text>
+        </TouchableOpacity>
       </View>
 
+      {/* Filters */}
       <Text style={styles.filterLabel}>Academic Year</Text>
       <HorizontalSelector
         items={years}
@@ -117,8 +129,8 @@ const UsersScreen = () => {
         onSelect={item => { setSelectedGroup(item.id); setPage(1); }}
       />
 
+      {/* Search */}
       <View style={styles.divider} />
-
       <TextInput
         style={styles.searchInput}
         placeholder="Search by name, identifier, contact..."
@@ -126,6 +138,7 @@ const UsersScreen = () => {
         onChangeText={handleSearch}
       />
 
+      {/* User Cards */}
       <UserCardList
         users={users}
         loading={loading}
@@ -133,7 +146,11 @@ const UsersScreen = () => {
       />
 
       {loading && (
-        <ActivityIndicator size="small" color="#007AFF" style={styles.loadingIndicator} />
+        <ActivityIndicator
+          size="small"
+          color="#007AFF"
+          style={styles.loadingIndicator}
+        />
       )}
     </View>
   );
@@ -155,10 +172,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
     color: '#2d3e83',
-    flex: 1, // pushes addButton to the right
+    flex: 1,           // push addButton to the right
   },
   addButton: {
     marginLeft: 'auto',
+  },
+  addText: {
+    marginLeft: 6,
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '500',
   },
   filterLabel: {
     marginTop: 10,

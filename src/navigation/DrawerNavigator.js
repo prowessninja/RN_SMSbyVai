@@ -4,7 +4,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import TabNavigator from './TabNavigator';
 import ViewProfile from '../screens/ViewProfile';
 import UsersScreen from '../screens/UsersScreen';
-import UserScreen from '../screens/UserScreen';
+import UserScreen from '../screens/AddUserScreen';
+import UserScreen from '../screens/EditUserScreen';
 import UserDetailsScreen from '../screens/UserDetailsScreen';
 import CustomDrawerContent from './CustomDrawerContent';
 
@@ -17,7 +18,8 @@ function UsersStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="UsersScreen" component={UsersScreen} />
       <Stack.Screen name="UserDetails" component={UserDetailsScreen} />
-      <Stack.Screen name="AddOrEditUser" component={UserScreen} />
+      <Stack.Screen name="AddUser" component={AddUserScreen} />
+      <Stack.Screen name="EditUser" component={EditUserScreen} />
     </Stack.Navigator>
   );
 }

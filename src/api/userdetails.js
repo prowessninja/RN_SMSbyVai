@@ -46,6 +46,29 @@ export const updateUserDetails = async (token, id, updatedData) => {
   }
 };
 
+export const createUserDetails = async (token, newUserData) => {
+  const url = `${BASE_URL}/users/`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Token ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(newUserData),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`❌ createUserDetails ${res.status}:`, body);
+      throw new Error(`Failed to create user (${res.status})`);
+    }
+    return await res.json();
+  } catch (err) {
+    console.error('🔥 createUserDetails error:', err);
+    throw err;
+  }
+};
+
 export const fetchUserSchema = async (token) => {
   const url = `${BASE_URL}/users/`; // adjust this endpoint if needed!
   try {
