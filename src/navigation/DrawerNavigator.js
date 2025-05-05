@@ -4,8 +4,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import TabNavigator from './TabNavigator';
 import ViewProfile from '../screens/ViewProfile';
 import UsersScreen from '../screens/UsersScreen';
-import UserScreen from '../screens/AddUserScreen';
-import UserScreen from '../screens/EditUserScreen';
+import AddUserScreen from '../screens/AddUserScreen';
+import EditUserScreen from '../screens/EditUserScreen';
 import UserDetailsScreen from '../screens/UserDetailsScreen';
 import CustomDrawerContent from './CustomDrawerContent';
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import {
   View, Text, StyleSheet, Image, ScrollView,
-  TouchableOpacity, ActivityIndicator, Alert
+  TouchableOpacity, ActivityIndicator, Alert,ImageBackground
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -81,6 +81,7 @@ const UserDetailsScreen = () => {
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
         <Icon name="arrow-left" size={24} color="#fff" />
       </TouchableOpacity>
+      
 
       <View style={styles.profileContainer}>
         {user.profile_image ? (
@@ -89,7 +90,7 @@ const UserDetailsScreen = () => {
           <Icon name="account-circle" size={100} color="#ccc" />
         )}
       </View>
-
+     
       <View style={styles.basicInfo}>
         <Text style={styles.name}>{user.first_name} {user.last_name}</Text>
         <Text style={styles.role}>{user.group?.name || 'No Role'}</Text>
@@ -133,7 +134,7 @@ const UserDetailsScreen = () => {
       <View style={styles.actionRow}>
       <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => navigation.navigate('AddOrEditUser', {
+          onPress={() => navigation.navigate('EditUser', {
             userId,
             userData: user   // ← pass the entire user object
           })}

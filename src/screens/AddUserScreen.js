@@ -1,13 +1,19 @@
 // src/screens/AddUserScreen.js
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useState, useContext } from 'react';
 import {
-  View, Text, TextInput, ScrollView, TouchableOpacity,
-  StyleSheet, Alert, ActivityIndicator
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { AuthContext } from '../context/AuthContext';
-import { updateUserDetails } from '../api/userdetails';
+import { createUser } from '../api/userdetails';  // ← You must export this
 
 const genderOptions = ['Male', 'Female', 'Other'];
 const bloodGroupOptions = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
@@ -18,24 +24,30 @@ const SectionHeader = ({ title }) => (
   </View>
 );
 
-const UserScreen = ({ route, navigation }) => {
-  const { userId, userData } = route.params;
+const AddUserScreen = ({ navigation }) => {
   const { token } = useContext(AuthContext);
 
-  const [formData, setFormData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [showDatePicker, setShowDatePicker] = useState({ section: null, index: null, field: null, show: false });
+  // blank template for a new user
+  const blankUser = {
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    alternate_phone: '',
+    department: '',
+    gender: '',
+    blood_group: '',
+    dob: '',
+    group: '',
+    employee_id: '',
+    address: { state: '', city: '', zip_code: '', landmark: '', street: '' },
+    guardians: [{ first_name: '', last_name: '', contact_number: '', relation: '', occupation: '', company_name: '', annual_income: '' }],
+    education_details: [{ institution: '', education_type: '', city: '', start_date: '', end_date: '' }]
+  };
 
-  // initialize from passed-in data
-  useEffect(() => {
-    setFormData({
-      ...userData,
-      address: userData.address || {},
-      guardians: Array.isArray(userData.guardians) ? userData.guardians : [],
-      education_details: Array.isArray(userData.education_details) ? userData.education_details : []
-    });
-    setLoading(false);
-  }, []);
+  const [formData, setFormData] = useState(blankUser);
+  const [loading, setLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState({ section: null, index: null, field: null, show: false });
 
   const handleMainChange = (field, value) =>
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -72,19 +84,26 @@ const UserScreen = ({ route, navigation }) => {
     setShowDatePicker({ section: null, index: null, field: null, show: false });
   };
 
-  const handleUpdate = async () => {
+  const handleCreate = async () => {
+    setLoading(true);
     try {
-      await updateUserDetails(token, userId, formData);
-      Alert.alert('Success', 'User details updated successfully!', [
+      await createUser(token, formData);
+      Alert.alert('Success', 'User created successfully!', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     } catch (err) {
       Alert.alert('Error', err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading || !formData) {
-    return <ActivityIndicator style={{ flex: 1 }} size="large" color="#007AFF" />;
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
   }
 
   return (
@@ -107,23 +126,26 @@ const UserScreen = ({ route, navigation }) => {
         placeholder="Email"
         value={formData.email}
         onChangeText={t => handleMainChange('email', t)}
+        keyboardType="email-address"
       />
       <TextInput
         style={styles.input}
         placeholder="Phone"
         value={formData.phone}
         onChangeText={t => handleMainChange('phone', t)}
+        keyboardType="phone-pad"
       />
       <TextInput
         style={styles.input}
         placeholder="Alternate Phone"
         value={formData.alternate_phone}
         onChangeText={t => handleMainChange('alternate_phone', t)}
+        keyboardType="phone-pad"
       />
       <TextInput
         style={styles.input}
         placeholder="Department"
-        value={formData.department || ''}
+        value={formData.department}
         onChangeText={t => handleMainChange('department', t)}
       />
 
@@ -132,6 +154,7 @@ const UserScreen = ({ route, navigation }) => {
         selectedValue={formData.gender}
         onValueChange={v => handleMainChange('gender', v)}
       >
+        <Picker.Item label="Select Gender" value="" />
         {genderOptions.map(o => <Picker.Item key={o} label={o} value={o} />)}
       </Picker>
 
@@ -140,6 +163,7 @@ const UserScreen = ({ route, navigation }) => {
         selectedValue={formData.blood_group}
         onValueChange={v => handleMainChange('blood_group', v)}
       >
+        <Picker.Item label="Select Blood Group" value="" />
         {bloodGroupOptions.map(o => <Picker.Item key={o} label={o} value={o} />)}
       </Picker>
 
@@ -155,7 +179,7 @@ const UserScreen = ({ route, navigation }) => {
       <TextInput
         style={styles.input}
         placeholder="Group"
-        value={formData.group?.name || formData.group || ''}
+        value={formData.group}
         onChangeText={t => handleMainChange('group', t)}
       />
       <TextInput
@@ -166,122 +190,53 @@ const UserScreen = ({ route, navigation }) => {
       />
 
       <SectionHeader title="Address" />
-      <TextInput
-        style={styles.input}
-        placeholder="State"
-        value={formData.address.state || ''}
-        onChangeText={t => handleAddressChange('state', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="City"
-        value={formData.address.city || ''}
-        onChangeText={t => handleAddressChange('city', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Zip Code"
-        value={formData.address.zip_code || ''}
-        onChangeText={t => handleAddressChange('zip_code', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Landmark"
-        value={formData.address.landmark || ''}
-        onChangeText={t => handleAddressChange('landmark', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Street"
-        value={formData.address.street || ''}
-        onChangeText={t => handleAddressChange('street', t)}
-      />
+      {['state','city','zip_code','landmark','street'].map(field => (
+        <TextInput
+          key={field}
+          style={styles.input}
+          placeholder={field.charAt(0).toUpperCase() + field.slice(1).replace('_',' ')}
+          value={formData.address[field] || ''}
+          onChangeText={t => handleAddressChange(field, t)}
+        />
+      ))}
 
       <SectionHeader title="Guardian Details" />
       {formData.guardians.map((g, i) => (
         <View key={i}>
-          <TextInput
-            style={styles.input}
-            placeholder="First Name"
-            value={g.first_name}
-            onChangeText={t => handleGuardianChange(i, 'first_name', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Last Name"
-            value={g.last_name}
-            onChangeText={t => handleGuardianChange(i, 'last_name', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Contact Number"
-            value={g.contact_number}
-            onChangeText={t => handleGuardianChange(i, 'contact_number', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Relationship"
-            value={g.relation || g.relationship}
-            onChangeText={t => handleGuardianChange(i, 'relation', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Occupation"
-            value={g.occupation}
-            onChangeText={t => handleGuardianChange(i, 'occupation', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Company Name"
-            value={g.company_name}
-            onChangeText={t => handleGuardianChange(i, 'company_name', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Annual Income"
-            value={String(g.annual_income)}
-            onChangeText={t => handleGuardianChange(i, 'annual_income', t)}
-          />
+          {['first_name','last_name','contact_number','relation','occupation','company_name','annual_income'].map(f => (
+            <TextInput
+              key={f}
+              style={styles.input}
+              placeholder={f.replace('_',' ').replace(/^\w/, c => c.toUpperCase())}
+              value={String(g[f] || '')}
+              onChangeText={t => handleGuardianChange(i, f, t)}
+            />
+          ))}
         </View>
       ))}
 
       <SectionHeader title="Education Details" />
       {formData.education_details.map((ed, i) => (
         <View key={i}>
-          <TextInput
-            style={styles.input}
-            placeholder="Institution"
-            value={ed.institution}
-            onChangeText={t => handleEducationChange(i, 'institution', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Education Type"
-            value={ed.education_type}
-            onChangeText={t => handleEducationChange(i, 'education_type', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="City"
-            value={ed.city}
-            onChangeText={t => handleEducationChange(i, 'city', t)}
-          />
-          <TouchableOpacity onPress={() => openDatePicker('education', i, 'start_date')}>
+          {['institution','education_type','city'].map(f => (
             <TextInput
+              key={f}
               style={styles.input}
-              placeholder="Start Date"
-              value={ed.start_date}
-              editable={false}
+              placeholder={f.replace('_',' ').replace(/^\w/, c => c.toUpperCase())}
+              value={ed[f] || ''}
+              onChangeText={t => handleEducationChange(i, f, t)}
             />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => openDatePicker('education', i, 'end_date')}>
-            <TextInput
-              style={styles.input}
-              placeholder="End Date"
-              value={ed.end_date}
-              editable={false}
-            />
-          </TouchableOpacity>
+          ))}
+          {['start_date','end_date'].map((f) => (
+            <TouchableOpacity key={f} onPress={() => openDatePicker('education', i, f)}>
+              <TextInput
+                style={styles.input}
+                placeholder={f.replace('_',' ').replace(/^\w/, c => c.toUpperCase())}
+                value={ed[f] || ''}
+                editable={false}
+              />
+            </TouchableOpacity>
+          ))}
         </View>
       ))}
 
@@ -307,9 +262,9 @@ const UserScreen = ({ route, navigation }) => {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.button, styles.saveButton]}
-          onPress={handleUpdate}
+          onPress={handleCreate}
         >
-          <Text style={styles.buttonText}>Save Changes</Text>
+          <Text style={styles.buttonText}>Save</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -319,26 +274,41 @@ const UserScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: { padding: 16, backgroundColor: '#fff' },
   sectionHeader: {
-    backgroundColor: '#007AFF',
-    padding: 10,
-    borderRadius: 5,
     marginVertical: 10,
   },
-  sectionHeaderText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  input: {
-    borderWidth: 1, borderColor: '#ccc', borderRadius: 5,
-    padding: 10, marginVertical: 5,
+  sectionHeaderText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#007AFF'
   },
-  label: { marginTop: 10, marginBottom: 5, fontWeight: 'bold' },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    marginVertical: 5
+  },
+  label: {
+    marginTop: 10,
+    marginBottom: 5,
+    fontWeight: 'bold'
+  },
   buttonContainer: {
-    flexDirection: 'row', justifyContent: 'space-between', marginVertical: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 20
   },
   button: {
-    flex: 1, padding: 15, alignItems: 'center', borderRadius: 5, marginHorizontal: 5,
+    flex: 1,
+    padding: 15,
+    alignItems: 'center',
+    borderRadius: 5,
+    marginHorizontal: 5
   },
   cancelButton: { backgroundColor: '#ccc' },
   saveButton: { backgroundColor: '#007AFF' },
   buttonText: { color: '#fff', fontWeight: 'bold' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });
 
 export default AddUserScreen;

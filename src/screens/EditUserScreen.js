@@ -1,344 +1,193 @@
-// src/screens/EditUserScreen.js
 import React, { useEffect, useState, useContext } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
-  StyleSheet, Alert, ActivityIndicator
+  StyleSheet, Alert, ActivityIndicator, Image
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
 import { AuthContext } from '../context/AuthContext';
-import { updateUserDetails } from '../api/userdetails';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { fetchUserDetails, updateUserDetails } from '../api/userdetails';
+import { launchImageLibrary } from 'react-native-image-picker';
 
-const genderOptions = ['Male', 'Female', 'Other'];
-const bloodGroupOptions = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
-
-const SectionHeader = ({ title }) => (
-  <View style={styles.sectionHeader}>
-    <Text style={styles.sectionHeaderText}>{title}</Text>
-  </View>
-);
-
-const UserScreen = ({ route, navigation }) => {
-  const { userId, userData } = route.params;
+export default function EditUserScreen({ route, navigation }) {
+  const { userId, userData } = route.params || {};
   const { token } = useContext(AuthContext);
 
   const [formData, setFormData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showDatePicker, setShowDatePicker] = useState({ section: null, index: null, field: null, show: false });
 
-  // initialize from passed-in data
   useEffect(() => {
-    setFormData({
-      ...userData,
-      address: userData.address || {},
-      guardians: Array.isArray(userData.guardians) ? userData.guardians : [],
-      education_details: Array.isArray(userData.education_details) ? userData.education_details : []
-    });
-    setLoading(false);
-  }, []);
-
-  const handleMainChange = (field, value) =>
-    setFormData(prev => ({ ...prev, [field]: value }));
-
-  const handleAddressChange = (field, value) =>
-    setFormData(prev => ({
-      ...prev,
-      address: { ...prev.address, [field]: value }
-    }));
-
-  const handleGuardianChange = (idx, field, value) => {
-    const guardians = [...formData.guardians];
-    guardians[idx] = { ...guardians[idx], [field]: value };
-    setFormData(prev => ({ ...prev, guardians }));
-  };
-
-  const handleEducationChange = (idx, field, value) => {
-    const ed = [...formData.education_details];
-    ed[idx] = { ...ed[idx], [field]: value };
-    setFormData(prev => ({ ...prev, education_details: ed }));
-  };
-
-  const openDatePicker = (section, index, field) => {
-    setShowDatePicker({ section, index, field, show: true });
-  };
-
-  const handleDateChange = (event, selected) => {
-    if (selected) {
-      const iso = selected.toISOString().split('T')[0];
-      const { section, index, field } = showDatePicker;
-      if (section === 'main') handleMainChange(field, iso);
-      else if (section === 'education') handleEducationChange(index, field, iso);
+    async function load() {
+      let data = userData;
+      if (!data) data = await fetchUserDetails(token, userId);
+      {
+        console.log('📦 user data in EditUserScreen:', data);
+        setFormData({
+          first_name: data.first_name || '',
+          last_name: data.last_name || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          alternate_phone: data.alternate_phone || '',
+          standard: data.standard || '',
+          department: data.department?.name || '',
+          gender: data.gender || '',
+          blood_group: data.blood_group || '',
+          dob: data.dob || '',
+          group: data.group?.name || '',
+          admission_number: data.admission_number || '',
+          employee_id: data.employee_id || '',
+          profile_image: data.profile_image || '',
+          aadhar_number: data.aapar_number || '',
+          pan_number: data.pen_number || '',
+          address: data.address || { state: '', city: '', zip_code: '', landmark: '', street: '' },
+          guardians: data.guardians || [{ first_name: '', last_name: '', contact_number: '', relation: '', occupation: '', company_name: '', annual_income: '' }],
+          education_details: data.education_details || [{ institution: '', education_type: '', city: '', start_date: '', end_date: '' }]
+        });
+      }
+      setLoading(false);
     }
-    setShowDatePicker({ section: null, index: null, field: null, show: false });
+    load();
+  }, [token, userId, userData]);
+
+  const handleChange = (field, value) => setFormData(f => ({ ...f, [field]: value }));
+  const handleAddressChange = (field, value) => setFormData(f => ({ ...f, address: { ...f.address, [field]: value } }));
+  const handleGuardianChange = (idx, field, value) => {
+    const updated = [...formData.guardians];
+    updated[idx][field] = value;
+    setFormData(f => ({ ...f, guardians: updated }));
+  };
+  const handleEducationChange = (idx, field, value) => {
+    const updated = [...formData.education_details];
+    updated[idx][field] = value;
+    setFormData(f => ({ ...f, education_details: updated }));
   };
 
   const handleUpdate = async () => {
     try {
       await updateUserDetails(token, userId, formData);
-      Alert.alert('Success', 'User details updated successfully!', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
+      Alert.alert('Success', 'User details updated.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
     } catch (err) {
       Alert.alert('Error', err.message);
     }
   };
 
-  if (loading || !formData) {
-    return <ActivityIndicator style={{ flex: 1 }} size="large" color="#007AFF" />;
-  }
+  const handlePickImage = () => {
+    launchImageLibrary(
+      { mediaType: 'photo', includeBase64: true, maxWidth: 500, maxHeight: 500 },
+      response => {
+        if (response.didCancel) return;
+        if (response.errorCode) {
+          Alert.alert('Error', response.errorMessage);
+          return;
+        }
+        const asset = response.assets[0];
+        setFormData(f => ({
+          ...f,
+          profile_image: asset.base64 ? `data:${asset.type};base64,${asset.base64}` : asset.uri
+        }));
+      }
+    );
+  };
+
+  if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" color="#007AFF" />;
+
+  const isStudent = formData.group.toLowerCase() === 'student';
+  const renderInput = (label, value, onChange) => (
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput style={styles.input} value={value} onChangeText={onChange} />
+    </View>
+  );
 
   return (
     <ScrollView style={styles.container}>
-      <SectionHeader title="User Details" />
-      <TextInput
-        style={styles.input}
-        placeholder="First Name"
-        value={formData.first_name}
-        onChangeText={t => handleMainChange('first_name', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Last Name"
-        value={formData.last_name}
-        onChangeText={t => handleMainChange('last_name', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={formData.email}
-        onChangeText={t => handleMainChange('email', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Phone"
-        value={formData.phone}
-        onChangeText={t => handleMainChange('phone', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Alternate Phone"
-        value={formData.alternate_phone}
-        onChangeText={t => handleMainChange('alternate_phone', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Department"
-        value={formData.department || ''}
-        onChangeText={t => handleMainChange('department', t)}
-      />
-
-      <Text style={styles.label}>Gender</Text>
-      <Picker
-        selectedValue={formData.gender}
-        onValueChange={v => handleMainChange('gender', v)}
-      >
-        {genderOptions.map(o => <Picker.Item key={o} label={o} value={o} />)}
-      </Picker>
-
-      <Text style={styles.label}>Blood Group</Text>
-      <Picker
-        selectedValue={formData.blood_group}
-        onValueChange={v => handleMainChange('blood_group', v)}
-      >
-        {bloodGroupOptions.map(o => <Picker.Item key={o} label={o} value={o} />)}
-      </Picker>
-
-      <TouchableOpacity onPress={() => openDatePicker('main', null, 'dob')}>
-        <TextInput
-          style={styles.input}
-          placeholder="Date of Birth"
-          value={formData.dob}
-          editable={false}
-        />
-      </TouchableOpacity>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Group"
-        value={formData.group?.name || formData.group || ''}
-        onChangeText={t => handleMainChange('group', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Employee ID"
-        value={formData.employee_id}
-        onChangeText={t => handleMainChange('employee_id', t)}
-      />
-
-      <SectionHeader title="Address" />
-      <TextInput
-        style={styles.input}
-        placeholder="State"
-        value={formData.address.state || ''}
-        onChangeText={t => handleAddressChange('state', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="City"
-        value={formData.address.city || ''}
-        onChangeText={t => handleAddressChange('city', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Zip Code"
-        value={formData.address.zip_code || ''}
-        onChangeText={t => handleAddressChange('zip_code', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Landmark"
-        value={formData.address.landmark || ''}
-        onChangeText={t => handleAddressChange('landmark', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Street"
-        value={formData.address.street || ''}
-        onChangeText={t => handleAddressChange('street', t)}
-      />
-
-      <SectionHeader title="Guardian Details" />
-      {formData.guardians.map((g, i) => (
-        <View key={i}>
-          <TextInput
-            style={styles.input}
-            placeholder="First Name"
-            value={g.first_name}
-            onChangeText={t => handleGuardianChange(i, 'first_name', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Last Name"
-            value={g.last_name}
-            onChangeText={t => handleGuardianChange(i, 'last_name', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Contact Number"
-            value={g.contact_number}
-            onChangeText={t => handleGuardianChange(i, 'contact_number', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Relationship"
-            value={g.relation || g.relationship}
-            onChangeText={t => handleGuardianChange(i, 'relation', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Occupation"
-            value={g.occupation}
-            onChangeText={t => handleGuardianChange(i, 'occupation', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Company Name"
-            value={g.company_name}
-            onChangeText={t => handleGuardianChange(i, 'company_name', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Annual Income"
-            value={String(g.annual_income)}
-            onChangeText={t => handleGuardianChange(i, 'annual_income', t)}
-          />
-        </View>
-      ))}
-
-      <SectionHeader title="Education Details" />
-      {formData.education_details.map((ed, i) => (
-        <View key={i}>
-          <TextInput
-            style={styles.input}
-            placeholder="Institution"
-            value={ed.institution}
-            onChangeText={t => handleEducationChange(i, 'institution', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Education Type"
-            value={ed.education_type}
-            onChangeText={t => handleEducationChange(i, 'education_type', t)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="City"
-            value={ed.city}
-            onChangeText={t => handleEducationChange(i, 'city', t)}
-          />
-          <TouchableOpacity onPress={() => openDatePicker('education', i, 'start_date')}>
-            <TextInput
-              style={styles.input}
-              placeholder="Start Date"
-              value={ed.start_date}
-              editable={false}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => openDatePicker('education', i, 'end_date')}>
-            <TextInput
-              style={styles.input}
-              placeholder="End Date"
-              value={ed.end_date}
-              editable={false}
-            />
-          </TouchableOpacity>
-        </View>
-      ))}
-
-      {showDatePicker.show && (
-        <DateTimePicker
-          value={
-            showDatePicker.section === 'main'
-              ? new Date(formData[showDatePicker.field] || Date.now())
-              : new Date(formData.education_details[showDatePicker.index][showDatePicker.field] || Date.now())
-          }
-          mode="date"
-          display="default"
-          onChange={handleDateChange}
-        />
-      )}
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.button, styles.cancelButton]}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.buttonText}>Cancel</Text>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Icon name="arrow-back" size={24} color="#007AFF" />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.button, styles.saveButton]}
-          onPress={handleUpdate}
-        >
-          <Text style={styles.buttonText}>Save Changes</Text>
+        <Icon name="account-edit" size={24} color="#007AFF" style={{ marginLeft: 10 }} />
+        <Text style={styles.headerTitle}>{isStudent ? 'Edit Student Details' : 'Edit Employee Details'}</Text>
+      </View>
+
+      <View style={styles.profileContainer}>
+        <Image
+          source={formData.profile_image ? { uri: formData.profile_image } : require('../../assets/default_profile.jpg')
+        }
+          style={styles.profileImage}
+        />
+        <TouchableOpacity onPress={handlePickImage}>
+          <Text style={styles.changePicText}>Edit Picture</Text>
         </TouchableOpacity>
       </View>
+
+      <Text style={styles.sectionTitle}>User Details</Text>
+      {renderInput('First Name', formData.first_name, t => handleChange('first_name', t))}
+      {renderInput('Last Name', formData.last_name, t => handleChange('last_name', t))}
+      {renderInput('Email', formData.email, t => handleChange('email', t))}
+      {renderInput('Phone', formData.phone, t => handleChange('phone', t))}
+      {renderInput('Alternate Phone', formData.alternate_phone, t => handleChange('alternate_phone', t))}
+      {isStudent
+        ? renderInput('Standard', formData.standard?.name || '', t => handleChange('standard', t))
+        : renderInput('Department', formData.department || '', t => handleChange('department', t))}
+      {renderInput('Gender', formData.gender, t => handleChange('gender', t))}
+      {renderInput('Blood Group', formData.blood_group, t => handleChange('blood_group', t))}
+      {renderInput('Date of Birth', formData.dob, t => handleChange('dob', t))}
+      {renderInput('Group', formData.group, t => handleChange('group', t))}
+      {isStudent
+        ? renderInput('Admission Number', String(formData.admission_number || ''), t => handleChange('admission_number', t))
+        : renderInput('Employee ID', formData.employee_id, t => handleChange('employee_id', t))}
+      {isStudent && renderInput('Aadhar Number', formData.aadhar_number, t => handleChange('aadhar_number', t))}
+      {isStudent && renderInput('PAN Number', formData.pan_number, t => handleChange('pan_number', t))}
+
+      <Text style={styles.sectionTitle}>Address</Text>
+      {renderInput('State', formData.address.state, t => handleAddressChange('state', t))}
+      {renderInput('City', formData.address.city, t => handleAddressChange('city', t))}
+      {renderInput('Zip Code', formData.address.zip_code, t => handleAddressChange('zip_code', t))}
+      {renderInput('Landmark', formData.address.landmark, t => handleAddressChange('landmark', t))}
+      {renderInput('Street', formData.address.street, t => handleAddressChange('street', t))}
+
+      <Text style={styles.sectionTitle}>Guardian Details</Text>
+      {formData.guardians.map((g, idx) => (
+        <View key={idx}>
+          {renderInput('First Name', g.first_name, t => handleGuardianChange(idx, 'first_name', t))}
+          {renderInput('Last Name', g.last_name, t => handleGuardianChange(idx, 'last_name', t))}
+          {renderInput('Contact Number', g.contact_number, t => handleGuardianChange(idx, 'contact_number', t))}
+          {renderInput('Relation', g.relation, t => handleGuardianChange(idx, 'relation', t))}
+          {renderInput('Occupation', g.occupation, t => handleGuardianChange(idx, 'occupation', t))}
+          {renderInput('Company Name', g.company_name, t => handleGuardianChange(idx, 'company_name', t))}
+          {renderInput('Annual Income', String(g.annual_income), t => handleGuardianChange(idx, 'annual_income', t))}
+        </View>
+      ))}
+
+      <Text style={styles.sectionTitle}>Education Details</Text>
+      {formData.education_details.map((e, idx) => (
+        <View key={idx}>
+          {renderInput('Institution', e.institution, t => handleEducationChange(idx, 'institution', t))}
+          {renderInput('Education Type', e.education_type, t => handleEducationChange(idx, 'education_type', t))}
+          {renderInput('City', e.city, t => handleEducationChange(idx, 'city', t))}
+          {renderInput('Start Date', e.start_date, t => handleEducationChange(idx, 'start_date', t))}
+          {renderInput('End Date', e.end_date, t => handleEducationChange(idx, 'end_date', t))}
+        </View>
+      ))}
+
+      <TouchableOpacity style={styles.saveButton} onPress={handleUpdate}>
+        <Text style={styles.saveButtonText}>Save</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: { padding: 16, backgroundColor: '#fff' },
-  sectionHeader: {
-    backgroundColor: '#007AFF',
-    padding: 10,
-    borderRadius: 5,
-    marginVertical: 10,
-  },
-  sectionHeaderText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  input: {
-    borderWidth: 1, borderColor: '#ccc', borderRadius: 5,
-    padding: 10, marginVertical: 5,
-  },
-  label: { marginTop: 10, marginBottom: 5, fontWeight: 'bold' },
-  buttonContainer: {
-    flexDirection: 'row', justifyContent: 'space-between', marginVertical: 20,
-  },
-  button: {
-    flex: 1, padding: 15, alignItems: 'center', borderRadius: 5, marginHorizontal: 5,
-  },
-  cancelButton: { backgroundColor: '#ccc' },
-  saveButton: { backgroundColor: '#007AFF' },
-  buttonText: { color: '#fff', fontWeight: 'bold' },
+  container: { flex: 1, padding: 15 },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  headerTitle: { fontSize: 18, fontWeight: 'bold', marginLeft: 10 },
+  profileContainer: { alignItems: 'center', marginBottom: 10 },
+  profileImage: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#ccc' },
+  changePicText: { color: '#007AFF', marginTop: 5 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 8, color: '#007AFF' },
+  inputGroup: { marginBottom: 10 },
+  label: { fontSize: 14, marginBottom: 3 },
+  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 5, padding: 8 },
+  saveButton: { backgroundColor: '#007AFF', padding: 12, borderRadius: 5, alignItems: 'center', marginTop: 20 },
+  saveButtonText: { color: '#fff', fontWeight: 'bold' },
 });
-
-export default UserScreen;
