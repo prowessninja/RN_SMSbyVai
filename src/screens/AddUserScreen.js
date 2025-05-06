@@ -1,5 +1,4 @@
-// src/screens/AddUserScreen.js
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext,useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,15 +7,23 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Image
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { AuthContext } from '../context/AuthContext';
-import { createUser } from '../api/userdetails';  // ← You must export this
+import { createUserDetails } from '../api/userdetails';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { fetchDropDownItems } from '../api/fetchDropDownItems';
 
 const genderOptions = ['Male', 'Female', 'Other'];
 const bloodGroupOptions = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+const relationshipOptions = ['Mother', 'Father', 'Guardian'];
+const stateOptions = ['Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'];
+const studentStandards = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+const designations = ['Junior Teacher', 'Senior Teacher', 'Head of the Department', 'Asst. HOD.', 'Worker', 'Driver', 'Account Admin', 'Accountant', 'Workshop Admin', 'Technician', 'Branch Admin', 'Lab Technician', 'Hostel Warden'];
 
 const SectionHeader = ({ title }) => (
   <View style={styles.sectionHeader}>
@@ -24,75 +31,156 @@ const SectionHeader = ({ title }) => (
   </View>
 );
 
-const AddUserScreen = ({ navigation }) => {
+const AddUserScreen = ({ navigation, route }) => {
   const { token } = useContext(AuthContext);
-
-  // blank template for a new user
-  const blankUser = {
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    alternate_phone: '',
-    department: '',
-    gender: '',
-    blood_group: '',
-    dob: '',
-    group: '',
-    employee_id: '',
-    address: { state: '', city: '', zip_code: '', landmark: '', street: '' },
-    guardians: [{ first_name: '', last_name: '', contact_number: '', relation: '', occupation: '', company_name: '', annual_income: '' }],
-    education_details: [{ institution: '', education_type: '', city: '', start_date: '', end_date: '' }]
-  };
-
-  const [formData, setFormData] = useState(blankUser);
+  const [userType, setUserType] = useState('');
+  const [formData, setFormData] = useState({});
+  const [profileImage, setProfileImage] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState({ section: null, index: null, field: null, show: false });
+  const [showDatePicker, setShowDatePicker] = useState({ field: null, show: false });
+  
+  
+
+  // LOG branchId passed from UsersScreen
+  const branchId = route?.params?.branchId;
+  const yearId = route?.params?.yearId;
+  console.log('Received branchId:', branchId);
+  console.log('Received yearId:', yearId);
+
+  useEffect(() => {
+    const loadDropdowns = async () => {
+      try {
+        const { departments, designations, groups, standards } = await fetchDropDownItems(
+          token,
+          branchId,
+          yearId
+        );
+        
+        console.log(
+          '✅ Designations:',
+          (designations.results || []).map(desig => ({
+            id: desig.id,
+            name: desig.name
+          }))
+        );
+        
+        console.log(
+          '✅ Groups:',
+          (groups.results || []).map(group => ({
+            id: group.id,
+            name: group.name
+          }))
+        );
+        
+        console.log(
+          '✅ Standards:',
+          (standards.results || []).map(standard => ({
+            id: standard.id,
+            name: standard.name
+          }))
+        );
+        console.log(
+          '✅ Departments:',
+          (departments.results || []).map(dep => ({
+            id: dep.id,
+            name: dep.name
+          }))
+        );
+
+        // You can set these in state if needed:
+        // setDepartments(departments);
+        // setDesignations(designations);
+        // setGroups(groups);
+        // setStandards(standards);
+      } catch (err) {
+        console.error('🔥 Error loading dropdowns in AddUserScreen:', err);
+      }
+    };
+
+    loadDropdowns();
+  }, [token, branchId, yearId]);
 
   const handleMainChange = (field, value) =>
     setFormData(prev => ({ ...prev, [field]: value }));
 
-  const handleAddressChange = (field, value) =>
-    setFormData(prev => ({
-      ...prev,
-      address: { ...prev.address, [field]: value }
-    }));
-
-  const handleGuardianChange = (idx, field, value) => {
-    const guardians = [...formData.guardians];
-    guardians[idx] = { ...guardians[idx], [field]: value };
-    setFormData(prev => ({ ...prev, guardians }));
-  };
-
-  const handleEducationChange = (idx, field, value) => {
-    const ed = [...formData.education_details];
-    ed[idx] = { ...ed[idx], [field]: value };
-    setFormData(prev => ({ ...prev, education_details: ed }));
-  };
-
-  const openDatePicker = (section, index, field) => {
-    setShowDatePicker({ section, index, field, show: true });
+  const openDatePicker = (field) => {
+    setShowDatePicker({ field, show: true });
   };
 
   const handleDateChange = (event, selected) => {
     if (selected) {
       const iso = selected.toISOString().split('T')[0];
-      const { section, index, field } = showDatePicker;
-      if (section === 'main') handleMainChange(field, iso);
-      else if (section === 'education') handleEducationChange(index, field, iso);
+      handleMainChange(showDatePicker.field, iso);
     }
-    setShowDatePicker({ section: null, index: null, field: null, show: false });
+    setShowDatePicker({ field: null, show: false });
   };
 
-  const handleCreate = async () => {
+  const handlePickImage = () => {
+    launchImageLibrary({ mediaType: 'photo' }, (response) => {
+      if (response.didCancel) return;
+      if (response.errorCode) Alert.alert('Error', response.errorMessage);
+      else setProfileImage(response.assets[0]);
+    });
+  };
+
+  const handleSubmit = async () => {
     setLoading(true);
     try {
-      await createUser(token, formData);
+      const payload = {
+        aapar_number: "123456789012",
+        address: {
+          street: "Fake Street",
+          city: "Sample City",
+          zip_code: "123456",
+          landmark: "Sample Landmark",
+          state: "Telangana"
+        },
+        admission_number: "98765432109876541",
+        alternate_phone: "+919876543210",
+        blood_group: "A+",
+        branch_id: 2,
+        dob: "1995-01-01",
+        education_details: [
+          {
+            institution: "ABC University",
+            education_type: "Bachelors",
+            city: "Sample City",
+            start_date: "2020-01-01",
+            end_date: "2024-01-01"
+          }
+        ],
+        email: "iamvoleti@gmail.com",
+        employee_id: "E1234567",
+        first_name: "John",
+        gender: "Male",
+        group_id: 2,
+        guardian_details: [
+          {
+            first_name: "Jane",
+            last_name: "Doe",
+            relation: "Mother",
+            contact_number: "+919876543210",
+            occupation: "Engineer"
+          }
+        ],
+        last_name: "Doe",
+        phone: "+919876543210",
+        standard_id: 5,
+        department_id: 4,
+        designation_id: 4
+      };
+
+      console.log('Creating user with data:', payload);
+      console.log('Payload JSON:', JSON.stringify(payload, null, 2));
+
+      await createUserDetails(token, payload);
+
       Alert.alert('Success', 'User created successfully!', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     } catch (err) {
-      Alert.alert('Error', err.message);
+      console.error('🔥 createUserDetails error:', err);
+      Alert.alert('Error', err.message || 'Failed to create user');
     } finally {
       setLoading(false);
     }
@@ -106,209 +194,129 @@ const AddUserScreen = ({ navigation }) => {
     );
   }
 
+  const renderPicker = (selectedValue, onValueChange, options, placeholder) => (
+    <View style={styles.pickerContainer}>
+      <Picker
+        selectedValue={selectedValue}
+        onValueChange={onValueChange}
+        style={styles.picker}
+      >
+        <Picker.Item label={placeholder} value="" />
+        {options.map(opt => (
+          <Picker.Item key={opt} label={opt} value={opt} />
+        ))}
+      </Picker>
+    </View>
+  );
+
   return (
     <ScrollView style={styles.container}>
-      <SectionHeader title="User Details" />
-      <TextInput
-        style={styles.input}
-        placeholder="First Name"
-        value={formData.first_name}
-        onChangeText={t => handleMainChange('first_name', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Last Name"
-        value={formData.last_name}
-        onChangeText={t => handleMainChange('last_name', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={formData.email}
-        onChangeText={t => handleMainChange('email', t)}
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Phone"
-        value={formData.phone}
-        onChangeText={t => handleMainChange('phone', t)}
-        keyboardType="phone-pad"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Alternate Phone"
-        value={formData.alternate_phone}
-        onChangeText={t => handleMainChange('alternate_phone', t)}
-        keyboardType="phone-pad"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Department"
-        value={formData.department}
-        onChangeText={t => handleMainChange('department', t)}
-      />
+      <View style={styles.header}>
+        <Icon name="arrow-back" size={24} onPress={() => navigation.goBack()} />
+        <Text style={styles.headerTitle}>Add User</Text>
+      </View>
 
-      <Text style={styles.label}>Gender</Text>
-      <Picker
-        selectedValue={formData.gender}
-        onValueChange={v => handleMainChange('gender', v)}
-      >
-        <Picker.Item label="Select Gender" value="" />
-        {genderOptions.map(o => <Picker.Item key={o} label={o} value={o} />)}
-      </Picker>
-
-      <Text style={styles.label}>Blood Group</Text>
-      <Picker
-        selectedValue={formData.blood_group}
-        onValueChange={v => handleMainChange('blood_group', v)}
-      >
-        <Picker.Item label="Select Blood Group" value="" />
-        {bloodGroupOptions.map(o => <Picker.Item key={o} label={o} value={o} />)}
-      </Picker>
-
-      <TouchableOpacity onPress={() => openDatePicker('main', null, 'dob')}>
-        <TextInput
-          style={styles.input}
-          placeholder="Date of Birth"
-          value={formData.dob}
-          editable={false}
-        />
-      </TouchableOpacity>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Group"
-        value={formData.group}
-        onChangeText={t => handleMainChange('group', t)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Employee ID"
-        value={formData.employee_id}
-        onChangeText={t => handleMainChange('employee_id', t)}
-      />
-
-      <SectionHeader title="Address" />
-      {['state','city','zip_code','landmark','street'].map(field => (
-        <TextInput
-          key={field}
-          style={styles.input}
-          placeholder={field.charAt(0).toUpperCase() + field.slice(1).replace('_',' ')}
-          value={formData.address[field] || ''}
-          onChangeText={t => handleAddressChange(field, t)}
-        />
-      ))}
-
-      <SectionHeader title="Guardian Details" />
-      {formData.guardians.map((g, i) => (
-        <View key={i}>
-          {['first_name','last_name','contact_number','relation','occupation','company_name','annual_income'].map(f => (
-            <TextInput
-              key={f}
-              style={styles.input}
-              placeholder={f.replace('_',' ').replace(/^\w/, c => c.toUpperCase())}
-              value={String(g[f] || '')}
-              onChangeText={t => handleGuardianChange(i, f, t)}
-            />
-          ))}
+      {userType === '' ? (
+        <View>
+          <Text style={styles.label}>Select User Type</Text>
+          {renderPicker(userType, setUserType, ['Student', 'Organisation Admin','Branch Admin','Driver','Teacher','Head of the Department'], 'Select Type')}
+          <TouchableOpacity style={styles.button} onPress={() => userType ? null : Alert.alert('Please select a user type')}>
+            <Text style={styles.buttonText}>Proceed</Text>
+          </TouchableOpacity>
         </View>
-      ))}
+      ) : (
+        <View>
+          <SectionHeader title="User Details" />
+          <TextInput style={[styles.input, styles.disabled]} value={userType} editable={false} />
 
-      <SectionHeader title="Education Details" />
-      {formData.education_details.map((ed, i) => (
-        <View key={i}>
-          {['institution','education_type','city'].map(f => (
-            <TextInput
-              key={f}
-              style={styles.input}
-              placeholder={f.replace('_',' ').replace(/^\w/, c => c.toUpperCase())}
-              value={ed[f] || ''}
-              onChangeText={t => handleEducationChange(i, f, t)}
-            />
-          ))}
-          {['start_date','end_date'].map((f) => (
-            <TouchableOpacity key={f} onPress={() => openDatePicker('education', i, f)}>
-              <TextInput
-                style={styles.input}
-                placeholder={f.replace('_',' ').replace(/^\w/, c => c.toUpperCase())}
-                value={ed[f] || ''}
-                editable={false}
-              />
-            </TouchableOpacity>
-          ))}
+          <TouchableOpacity onPress={() => openDatePicker('joining_date')}>
+            <TextInput style={styles.input} placeholder="Date of Joining" value={formData.joining_date} editable={false} />
+          </TouchableOpacity>
+
+          {userType === 'Student' ? (
+            <>
+              <TextInput style={styles.input} placeholder="PAN" onChangeText={t => handleMainChange('pan', t)} />
+              <TextInput style={styles.input} placeholder="Aadhar" onChangeText={t => handleMainChange('aadhar', t)} />
+              <TextInput style={styles.input} placeholder="Admission Number" onChangeText={t => handleMainChange('admission_number', t)} />
+              {renderPicker(formData.standard, v => handleMainChange('standard', v), studentStandards, 'Select Standard')}
+            </>
+          ) : (
+            <>
+              {renderPicker(formData.designation, v => handleMainChange('designation', v), designations, 'Select Designation')}
+              <TextInput style={styles.input} placeholder="Department" onChangeText={t => handleMainChange('department', t)} />
+              <TextInput style={styles.input} placeholder="Employee ID" onChangeText={t => handleMainChange('employee_id', t)} />
+            </>
+          )}
+
+          <TextInput style={styles.input} placeholder="First Name" onChangeText={t => handleMainChange('first_name', t)} />
+          <TextInput style={styles.input} placeholder="Last Name" onChangeText={t => handleMainChange('last_name', t)} />
+          <TextInput style={styles.input} placeholder="Email" onChangeText={t => handleMainChange('email', t)} keyboardType="email-address" />
+          <TextInput style={styles.input} placeholder="Phone Number" onChangeText={t => handleMainChange('phone', t)} keyboardType="phone-pad" />
+          <TextInput style={styles.input} placeholder="Alternate Phone Number" onChangeText={t => handleMainChange('alternate_phone', t)} keyboardType="phone-pad" />
+          <TouchableOpacity onPress={() => openDatePicker('dob')}>
+            <TextInput style={styles.input} placeholder="Date of Birth" value={formData.dob} editable={false} />
+          </TouchableOpacity>
+          {renderPicker(formData.gender, v => handleMainChange('gender', v), genderOptions, 'Select Gender')}
+          {renderPicker(formData.blood_group, v => handleMainChange('blood_group', v), bloodGroupOptions, 'Select Blood Group')}
+          <TouchableOpacity style={styles.imagePicker} onPress={handlePickImage}>
+            {profileImage ? <Image source={{ uri: profileImage.uri }} style={styles.profileImage} /> : <Text style={styles.imagePickerText}>Select Profile Picture</Text>}
+          </TouchableOpacity>
+
+          <SectionHeader title="Address" />
+          <TextInput style={styles.input} placeholder="Street" onChangeText={t => handleMainChange('street', t)} />
+          <TextInput style={styles.input} placeholder="City" onChangeText={t => handleMainChange('city', t)} />
+          <TextInput style={styles.input} placeholder="Zip Code" onChangeText={t => handleMainChange('zip_code', t)} />
+          <TextInput style={styles.input} placeholder="Landmark" onChangeText={t => handleMainChange('landmark', t)} />
+          {renderPicker(formData.state, v => handleMainChange('state', v), stateOptions, 'Select State')}
+
+          <SectionHeader title="Education Details" />
+          <TextInput style={styles.input} placeholder="Institution" onChangeText={t => handleMainChange('institution', t)} />
+          <TextInput style={styles.input} placeholder="Education Type" onChangeText={t => handleMainChange('education_type', t)} />
+          <TextInput style={styles.input} placeholder="Education City" onChangeText={t => handleMainChange('education_city', t)} />
+          <TouchableOpacity onPress={() => openDatePicker('start_date')}>
+            <TextInput style={styles.input} placeholder="Start Date" value={formData.start_date} editable={false} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => openDatePicker('end_date')}>
+            <TextInput style={styles.input} placeholder="End Date" value={formData.end_date} editable={false} />
+          </TouchableOpacity>
+
+          <SectionHeader title="Guardian Details" />
+          <TextInput style={styles.input} placeholder="Guardian First Name" onChangeText={t => handleMainChange('guardian_first_name', t)} />
+          <TextInput style={styles.input} placeholder="Guardian Last Name" onChangeText={t => handleMainChange('guardian_last_name', t)} />
+          <TextInput style={styles.input} placeholder="Guardian Contact Number" onChangeText={t => handleMainChange('guardian_contact_number', t)} />
+          <TextInput style={styles.input} placeholder="Guardian Occupation" onChangeText={t => handleMainChange('guardian_occupation', t)} />
+          <TextInput style={styles.input} placeholder="Guardian Annual Income" onChangeText={t => handleMainChange('guardian_annual_income', t)} />
+          {renderPicker(formData.guardian_relation, v => handleMainChange('guardian_relation', v), relationshipOptions, 'Select Relationship')}
+
+          <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+            <Text style={styles.buttonText}>Submit</Text>
+          </TouchableOpacity>
         </View>
-      ))}
-
-      {showDatePicker.show && (
-        <DateTimePicker
-          value={
-            showDatePicker.section === 'main'
-              ? new Date(formData[showDatePicker.field] || Date.now())
-              : new Date(formData.education_details[showDatePicker.index][showDatePicker.field] || Date.now())
-          }
-          mode="date"
-          display="default"
-          onChange={handleDateChange}
-        />
       )}
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.button, styles.cancelButton]}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.buttonText}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.button, styles.saveButton]}
-          onPress={handleCreate}
-        >
-          <Text style={styles.buttonText}>Save</Text>
-        </TouchableOpacity>
-      </View>
+      {showDatePicker.show && (
+        <DateTimePicker value={new Date()} mode="date" display="default" onChange={handleDateChange} />
+      )}
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 16, backgroundColor: '#fff' },
-  sectionHeader: {
-    marginVertical: 10,
-  },
-  sectionHeaderText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#007AFF'
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 10,
-    marginVertical: 5
-  },
-  label: {
-    marginTop: 10,
-    marginBottom: 5,
-    fontWeight: 'bold'
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 20
-  },
-  button: {
-    flex: 1,
-    padding: 15,
-    alignItems: 'center',
-    borderRadius: 5,
-    marginHorizontal: 5
-  },
-  cancelButton: { backgroundColor: '#ccc' },
-  saveButton: { backgroundColor: '#007AFF' },
+  container: { padding: 10 },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', marginLeft: 10 },
+  sectionHeader: { backgroundColor: '#007AFF', padding: 10, borderRadius: 5, marginVertical: 10 },
+  sectionHeaderText: { color: '#fff', fontWeight: 'bold' },
+  input: { borderWidth: 1, borderColor: '#ccc', padding: 10, marginBottom: 10, borderRadius: 5 },
+  disabled: { backgroundColor: '#f0f0f0' },
+  button: { backgroundColor: '#007AFF', padding: 15, borderRadius: 5, alignItems: 'center', marginTop: 10 },
   buttonText: { color: '#fff', fontWeight: 'bold' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' }
+  pickerContainer: { borderWidth: 1, borderColor: '#ccc', borderRadius: 5, marginBottom: 10 },
+  picker: { height: 50, width: '100%' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  imagePicker: { backgroundColor: '#007AFF', padding: 10, alignItems: 'center', borderRadius: 5, marginBottom: 10, borderWidth: 1, borderColor: '#005BBB' },
+  imagePickerText: { color: '#fff' },
+  profileImage: { width: 100, height: 100, borderRadius: 50 }
 });
 
 export default AddUserScreen;

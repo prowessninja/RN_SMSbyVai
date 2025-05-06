@@ -25,20 +25,26 @@ export const fetchUserDetails = async (token, id) => {
 
 export const updateUserDetails = async (token, id, updatedData) => {
   const url = `${BASE_URL}/users/${id}/`;
+  const isFormData = updatedData instanceof FormData;
+
+  const headers = {
+    Authorization: `Token ${token}`,
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+  };
+
   try {
     const res = await fetch(url, {
       method: 'PATCH',
-      headers: {
-        Authorization: `Token ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updatedData),
+      headers,
+      body: isFormData ? updatedData : JSON.stringify(updatedData),
     });
+
     if (!res.ok) {
       const body = await res.text();
       console.error(`❌ updateUserDetails ${res.status}:`, body);
       throw new Error(`Failed to update user details (${res.status})`);
     }
+
     return await res.json();
   } catch (err) {
     console.error('🔥 updateUserDetails error:', err);
@@ -48,21 +54,29 @@ export const updateUserDetails = async (token, id, updatedData) => {
 
 export const createUserDetails = async (token, newUserData) => {
   const url = `${BASE_URL}/users/`;
+  const isFormData = newUserData instanceof FormData;
+
+  const headers = {
+    Authorization: `Token ${token}`,
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+  };
+
+  console.log('Creating user with data:', newUserData);
+
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        Authorization: `Token ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(newUserData),
+      headers,
+      body: isFormData ? newUserData : JSON.stringify(newUserData),
     });
+
+    const body = await res.text();
     if (!res.ok) {
-      const body = await res.text();
       console.error(`❌ createUserDetails ${res.status}:`, body);
       throw new Error(`Failed to create user (${res.status})`);
     }
-    return await res.json();
+
+    return JSON.parse(body);
   } catch (err) {
     console.error('🔥 createUserDetails error:', err);
     throw err;
@@ -70,7 +84,7 @@ export const createUserDetails = async (token, newUserData) => {
 };
 
 export const fetchUserSchema = async (token) => {
-  const url = `${BASE_URL}/users/`; // adjust this endpoint if needed!
+  const url = `${BASE_URL}/users/`;
   try {
     const res = await fetch(url, {
       method: 'GET',
@@ -92,3 +106,13 @@ export const fetchUserSchema = async (token) => {
     throw err;
   }
 };
+
+
+
+
+
+
+
+
+
+

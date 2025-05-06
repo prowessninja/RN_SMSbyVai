@@ -1,4 +1,3 @@
-// src/screens/UsersScreen.js
 import React, { useEffect, useState, useContext } from 'react';
 import {
   View,
@@ -6,7 +5,8 @@ import {
   StyleSheet,
   TextInput,
   ActivityIndicator,
-  TouchableOpacity
+  TouchableOpacity,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
@@ -32,7 +32,6 @@ const UsersScreen = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  // Load filters (years & branches)
   useEffect(() => {
     (async () => {
       try {
@@ -42,15 +41,20 @@ const UsersScreen = () => {
         ]);
         setYears(yearData.results || []);
         setBranches(branchData.results || []);
-        if (yearData.results?.length) setSelectedYear(yearData.results[0].id);
-        if (branchData.results?.length) setSelectedBranch(branchData.results[0].id);
+        if (yearData.results?.length) setSelectedYear(yearData.results[0].id);{
+          const yearIds = yearData.results.map(year => year.id);
+          console.log('Year IDs:', yearIds);
+        }
+        if (branchData.results?.length) setSelectedBranch(branchData.results[0].id);{
+          const branchIds = branchData.results.map(branch => branch.id);
+          console.log('Branch IDs:', branchIds);
+        }
       } catch (err) {
         console.error('Error loading filters:', err);
       }
     })();
   }, [token]);
 
-  // Load users whenever filters/search/page change
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -63,10 +67,9 @@ const UsersScreen = () => {
           page,
           page_size: 10,
         };
-        const { results = [], next, } = await fetchUsersList(token, filters);
+        const { results = [], next } = await fetchUsersList(token, filters);
         setUsers(prev => page === 1 ? results : [...prev, ...results]);
         setHasMore(!!next);
-        // rebuild group list from current page
         setGroups(
           [...new Map(results.map(u => [u.group?.id, u.group])).values()].filter(Boolean)
         );
@@ -87,6 +90,26 @@ const UsersScreen = () => {
     setPage(1);
   };
 
+  const handleAddUserPress = () => {
+    Alert.alert(
+      'Confirm',
+      `New User will be created in Branch: '${selectedBranch}'. Do you want to proceed?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Yes',
+          onPress: () => {
+            navigation.navigate('AddUser', { branchId: selectedBranch, yearId: selectedYear });
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -100,7 +123,7 @@ const UsersScreen = () => {
         {/* Add User button */}
         <TouchableOpacity
           style={[styles.addButton, { flexDirection: 'row', alignItems: 'center' }]}
-          onPress={() => navigation.navigate('AddUser')}
+          onPress={handleAddUserPress}
         >
           <Icon name="account-plus" size={24} color="#007AFF" />
           <Text style={styles.addText}>Add User</Text>
@@ -119,7 +142,8 @@ const UsersScreen = () => {
       <HorizontalSelector
         items={branches}
         selectedId={selectedBranch}
-        onSelect={item => { setSelectedBranch(item.id); setPage(1); }}
+        onSelect={item => { setSelectedBranch(item.id); setPage(1); 
+        console.log('Selected Branch ID:', item.id);}}
       />
 
       <Text style={styles.filterLabel}>User Group</Text>
@@ -129,7 +153,6 @@ const UsersScreen = () => {
         onSelect={item => { setSelectedGroup(item.id); setPage(1); }}
       />
 
-      {/* Search */}
       <View style={styles.divider} />
       <TextInput
         style={styles.searchInput}
@@ -138,7 +161,6 @@ const UsersScreen = () => {
         onChangeText={handleSearch}
       />
 
-      {/* User Cards */}
       <UserCardList
         users={users}
         loading={loading}
@@ -172,7 +194,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
     color: '#2d3e83',
-    flex: 1,           // push addButton to the right
+    flex: 1,
   },
   addButton: {
     marginLeft: 'auto',
