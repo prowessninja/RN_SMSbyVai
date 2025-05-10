@@ -276,6 +276,7 @@ const styles = StyleSheet.create({
   },
   submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  
 });
 
 export default CreateRoleScreen;

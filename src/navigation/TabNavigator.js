@@ -6,6 +6,8 @@ import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../context/AuthContext';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import Dashboard from '../screens/Dashboard';
+import SettingsScreen from '../screens/SettingsScreen';
+import AlertsScreen from '../screens/AlertsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -72,7 +74,7 @@ const TabNavigator = () => {
     >
       <Tab.Screen
         name="Menu"
-        children={() => <DummyScreen title="Menu Placeholder" />}
+        children={() => <DummyScreen title="" />}
         options={{
           tabBarButton: (props) => (
             <TouchableOpacity {...props} onPress={() => navigation.openDrawer()}>
@@ -88,9 +90,9 @@ const TabNavigator = () => {
           ),
         }}
       />
-      <Tab.Screen name="Settings" children={() => <DummyScreen title="Settings" />} />
+      <Tab.Screen name="Settings" component={SettingsScreen} />
       <Tab.Screen name="Dashboard" component={Dashboard} />
-      <Tab.Screen name="Alerts" children={() => <DummyScreen title="Alerts" />} />
+      <Tab.Screen name="Alerts" component={AlertsScreen} />
       <Tab.Screen name="Logout" component={LogoutScreen} />
     </Tab.Navigator>
   );

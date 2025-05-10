@@ -17,6 +17,18 @@ export const PageHeader = ({ navigation, title, iconName = 'group-add' }) => (
   </View>
 );
 
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderColor: '#ddd',
+    paddingBottom: 8,
+  },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#2d3e83', marginLeft: 10 },
+});
+
 // Axios instance setup for API calls
 const api = axios.create({
   baseURL: 'https://vai.dev.sms.visionariesai.com/api/',

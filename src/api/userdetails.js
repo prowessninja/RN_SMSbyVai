@@ -107,6 +107,32 @@ export const fetchUserSchema = async (token) => {
   }
 };
 
+export const sendPasswordResetEmail = async (token, id) => {
+  const url = `${BASE_URL}/users/${id}/send-reset-password-email/`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Token ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
+
+    const body = await res.text();
+    if (!res.ok) {
+      console.error(`❌ sendResetPasswordEmail ${res.status}:`, body);
+      throw new Error(`Failed to send reset password email (${res.status}): ${body}`);
+    }
+
+    console.log('✅ Reset password email sent successfully');
+    return JSON.parse(body || '{}');
+  } catch (err) {
+    console.error('🔥 sendResetPasswordEmail error:', err);
+    throw err;
+  }
+};
 
 
 

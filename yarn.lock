@@ -1489,6 +1489,11 @@
   dependencies:
     merge-options "^3.0.4"
 
+"@react-native-community/checkbox@0.5.13":
+  version "0.5.13"
+  resolved "https://registry.yarnpkg.com/@react-native-community/checkbox/-/checkbox-0.5.13.tgz#f15cdc1f80ccc33fc949b7673b226225d94fe865"
+  integrity sha512-FMDYudaUbodbDOBgD6wT7s5z2QSzzghq46og8fF1yNXAp56AIrmRHZAtQhvlfyCdzWDu1+lBqgOxgupRmkCAUA==
+
 "@react-native-community/cli-clean@^10.1.1":
   version "10.1.1"
   resolved "https://registry.npmjs.org/@react-native-community/cli-clean/-/cli-clean-10.1.1.tgz"
@@ -6548,6 +6553,16 @@ react-native-config@^1.5.5:
   version "1.5.5"
   resolved "https://registry.npmjs.org/react-native-config/-/react-native-config-1.5.5.tgz"
   integrity sha512-dGdLnBU0cd5xL5bF0ROTmHYbsstZnQKOEPfglvZi1vStvAjpld14X25K6mY3KGPTMWAzx6TbjKeq5dR+ILuMMA==
+
+react-native-dropdown-picker@5.4.6:
+  version "5.4.6"
+  resolved "https://registry.yarnpkg.com/react-native-dropdown-picker/-/react-native-dropdown-picker-5.4.6.tgz#3736fc468de4a295e4df8d1f65ed2eadaf9b445f"
+  integrity sha512-T1XBHbE++M6aRU3wFYw3MvcOuabhWZ29RK/Ivdls2r1ZkZ62iEBZknLUPeVLMX3x6iUxj4Zgr3X2DGlEGXeHsA==
+
+react-native-element-dropdown@2.5.0:
+  version "2.5.0"
+  resolved "https://registry.yarnpkg.com/react-native-element-dropdown/-/react-native-element-dropdown-2.5.0.tgz#d73c8b5e84723bd40edee830c30352f03df0a4f6"
+  integrity sha512-ZlatJ2X0/iR+rgZ9Mcp5KO9JvL9fAI/ZGnbdo07wY0CeqVMxAnAGyj2INEqtwkd81bEHVmWDlhpFgy0xhX6qNQ==
 
 react-native-fonts@^0.0.0:
   version "0.0.0"

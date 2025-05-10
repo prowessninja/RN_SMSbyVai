@@ -7,7 +7,11 @@ import UsersScreen from '../screens/UsersScreen';
 import AddUserScreen from '../screens/AddUserScreen';
 import EditUserScreen from '../screens/EditUserScreen';
 import UserDetailsScreen from '../screens/UserDetailsScreen';
+import StandardsScreen from '../screens/StandardsScreen';
+import DepartmentsScreen from '../screens/DepartmentsScreen';
 import CustomDrawerContent from './CustomDrawerContent';
+import UserPermissionsScreen from '../screens/UserPermissionsScreen';
+import CreateRoleScreen from '../screens/CreateRoleScreen'; // adjust path if needed
 
 
 const Drawer = createDrawerNavigator();
@@ -20,6 +24,10 @@ function UsersStack() {
       <Stack.Screen name="UserDetails" component={UserDetailsScreen} />
       <Stack.Screen name="AddUser" component={AddUserScreen} />
       <Stack.Screen name="EditUser" component={EditUserScreen} />
+      <Stack.Screen name="Standards" component={StandardsScreen} />
+      <Stack.Screen name="Permissions" component={UserPermissionsScreen} />
+      <Stack.Screen name="CreateRole" component={CreateRoleScreen}  options={{ headerShown: true }}/>
+      
     </Stack.Navigator>
   );
 }
@@ -34,6 +42,10 @@ const MainDrawer = () => {
       <Drawer.Screen name="HomeTabs" component={TabNavigator} />
       <Drawer.Screen name="Users" component={UsersStack} />
       <Drawer.Screen name="ViewProfile" component={ViewProfile} />
+      <Drawer.Screen name="Standards" component={StandardsScreen} />
+      <Drawer.Screen name="Departments" component={DepartmentsScreen} />
+      <Drawer.Screen name="User Permissions" component={UserPermissionsScreen} />
+      <Drawer.Screen name="CreateRole" component={CreateRoleScreen}/>
     </Drawer.Navigator>
   );
 };

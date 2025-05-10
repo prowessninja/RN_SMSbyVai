@@ -66,6 +66,7 @@ const menuItems = [
   },
   { label: 'Leave Management', icon: 'calendar-remove' },
   { label: '24/7 Support', icon: 'headset' },
+  { label: 'User Permissions', icon: 'shield-account' },
 ];
 
 const CustomDrawerContent = (props) => {

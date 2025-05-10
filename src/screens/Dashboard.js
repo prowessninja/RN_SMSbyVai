@@ -8,6 +8,7 @@ import InfoTile from '../components/InfoTile';
 import { BarChart, PieChart, AreaChart, Grid } from 'react-native-svg-charts';
 import { Circle, G, Text as SVGText } from 'react-native-svg';
 import * as shape from 'd3-shape';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -19,6 +20,59 @@ const Dashboard = () => {
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const dashboardContent = {
+    "Organisation Admin": {
+      tiles: [
+        { title: 'Total Students', value: '480', icon: 'account-group', bg: '#6A1B9A' },
+        { title: 'Teaching Staff', value: '40', icon: 'school', bg: '#0277BD' },
+        { title: 'Non-Teaching', value: '25', icon: 'briefcase', bg: '#2E7D32' },
+        { title: 'Total Revenue', value: '₹5,000,000', icon: 'currency-inr', bg: '#FF9800' },
+      ],
+      charts: ['attendance', 'fee', 'expenditure', 'revenue'],
+    },
+    Teacher: {
+      tiles: [
+        { title: 'My Classes', value: '5', icon: 'chalkboard-teacher', bg: '#6A1B9A' },
+        { title: 'Upcoming Exams', value: '3', icon: 'file-certificate', bg: '#0277BD' },
+        { title: 'My Students', value: '120', icon: 'user-graduate', bg: '#8BC34A' },
+      ],
+      charts: ['attendance', 'fee'],
+    },
+    Student: {
+      tiles: [
+        { title: 'My Attendance', value: '92%', icon: 'calendar-check', bg: '#6A1B9A' },
+        { title: 'Pending Fees', value: '₹5,000', icon: 'wallet', bg: '#0277BD' },
+        { title: 'Upcoming Exams', value: '2', icon: 'file-certificate', bg: '#FF5722' },
+      ],
+      charts: ['attendance'],
+    },
+    Drivers: {
+      tiles: [
+        { title: 'Active Rides', value: '15', icon: 'car', bg: '#673AB7' },
+        { title: 'Pending Rides', value: '3', icon: 'car-side', bg: '#FFC107' },
+      ],
+      charts: ['attendance'],
+    },
+    'Head of Department': {
+      tiles: [
+        { title: 'Total Staff', value: '20', icon: 'users', bg: '#3F51B5' },
+        { title: 'Total Students', value: '300', icon: 'user-graduate', bg: '#009688' },
+        { title: 'Pending Requests', value: '8', icon: 'clipboard-list', bg: '#FF5722' },
+      ],
+      charts: ['expenditure', 'revenue'],
+    },
+    'Branch Admin': {
+      tiles: [
+        { title: 'Branch Performance', value: '80%', icon: 'store', bg: '#9C27B0' },
+        { title: 'Branch Staff', value: '30', icon: 'users', bg: '#607D8B' },
+      ],
+      charts: ['attendance', 'expenditure'],
+    },
+  };
+
+  const role = user?.group?.name || 'Default';
+  const content = dashboardContent[role] || { tiles: [], charts: [] };
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -141,68 +195,80 @@ const Dashboard = () => {
         <HorizontalSelector items={years} selectedId={selectedYear} onSelect={(y) => setSelectedYear(y.id)} />
       </View>
 
-      <View style={styles.sectionTiles}>
-        <InfoTile title="Total Students" value="480" icon="account-group" backgroundColor="#6A1B9A" />
-        <InfoTile title="Teaching Staff" value="40" icon="school" backgroundColor="#0277BD" />
-        <InfoTile title="Non-Teaching" value="25" icon="briefcase" backgroundColor="#2E7D32" />
-      </View>
+      {content.tiles.length > 0 && (
+        <View style={styles.sectionTiles}>
+          {content.tiles.map((tile, idx) => (
+            <InfoTile
+              key={idx}
+              title={tile.title}
+              value={tile.value}
+              icon={tile.icon}
+              backgroundColor={tile.bg}
+            />
+          ))}
+        </View>
+      )}
 
-      {/* Attendance Bar Chart */}
-      <View style={styles.chartBox}>
-        <Text style={styles.chartLabel}>Attendance %</Text>
-        <BarChart
-          style={{ height: 200 }}
-          data={attendanceData}
-          svg={{ fill: '#43A047' }}
-          contentInset={{ top: 20, bottom: 20 }}
-        >
-          <Grid />
-          <Labels />
-        </BarChart>
-      </View>
+      {content.charts.includes('attendance') && (
+        <View style={styles.chartBox}>
+          <Text style={styles.chartLabel}>Attendance %</Text>
+          <BarChart
+            style={{ height: 200 }}
+            data={attendanceData}
+            svg={{ fill: '#43A047' }}
+            contentInset={{ top: 20, bottom: 20 }}
+          >
+            <Grid />
+            <Labels />
+          </BarChart>
+        </View>
+      )}
 
-      {/* Fee Status Pie Chart with Labels */}
-      <View style={styles.chartBox}>
-        <Text style={styles.chartLabel}>Fee Status</Text>
-        <PieChart
-          style={{ height: 200 }}
-          data={feeData}
-          innerRadius={40}
-          outerRadius={80}
-          labelRadius={110}
-        >
-          <PieLabels />
-        </PieChart>
-      </View>
+      {content.charts.includes('fee') && (
+        <View style={styles.chartBox}>
+          <Text style={styles.chartLabel}>Fee Status</Text>
+          <PieChart
+            style={{ height: 200 }}
+            data={feeData}
+            innerRadius={40}
+            outerRadius={80}
+            labelRadius={110}
+          >
+            <PieLabels />
+          </PieChart>
+        </View>
+      )}
 
-      {/* Expenditures Bar Chart */}
-      <View style={styles.chartBox}>
-        <Text style={styles.chartLabel}>Expenditures</Text>
-        <BarChart
-          style={{ height: 200 }}
-          data={expenditureData}
-          svg={{ fill: '#2196F3' }}
-          contentInset={{ top: 20, bottom: 20 }}
-        >
-          <Grid />
-          <Labels />
-        </BarChart>
-      </View>
+      {content.charts.includes('expenditure') && (
+        <View style={styles.chartBox}>
+          <Text style={styles.chartLabel}>Expenditures</Text>
+          <BarChart
+            style={{ height: 200 }}
+            data={expenditureData}
+            svg={{ fill: '#2196F3' }}
+            contentInset={{ top: 20, bottom: 20 }}
+          >
+            <Grid />
+            <Labels />
+          </BarChart>
+        </View>
+      )}
 
-      {/* Monthly Revenue Area Chart with Labels */}
-      <View style={styles.chartBox}>
-        <Text style={styles.chartLabel}>Monthly Revenue</Text>
-        <AreaChart
-          style={{ height: 200 }}
-          data={revenueData}
-          svg={{ fill: 'rgba(8, 135, 76, 0.93)', stroke: '#2196F3' }}
-          contentInset={{ top: 20, bottom: 20 }}
-          curve={shape.curveNatural}
-        >
-          <Grid />
-          <AreaLabels />
-        </AreaChart>
-      </View>
+      {content.charts.includes('revenue') && (
+        <View style={styles.chartBox}>
+          <Text style={styles.chartLabel}>Monthly Revenue</Text>
+          <AreaChart
+            style={{ height: 200 }}
+            data={revenueData}
+            svg={{ fill: 'rgba(8, 135, 76, 0.93)', stroke: '#2196F3' }}
+            contentInset={{ top: 20, bottom: 20 }}
+            curve={shape.curveNatural}
+          >
+            <Grid />
+            <AreaLabels />
+          </AreaChart>
+        </View>
+      )}
     </ScrollView>
   );
 };
@@ -225,23 +291,13 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     backgroundColor: '#FFF3E0',
     padding: 12,
-    borderRadius: 16,
-    elevation: 2,
+    borderRadius: 12,
+    elevation: 3,
   },
-  label: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 4 },
-  sectionTiles: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 15,
-  },
-  chartBox: {
-    backgroundColor: '#FFFFFF',
-    padding: 10,
-    borderRadius: 16,
-    elevation: 2,
-    marginBottom: 15,
-  },
-  chartLabel: { fontSize: 14, fontWeight: '600', marginBottom: 6, color: '#333', textAlign: 'center' },
+  label: { fontSize: 16, marginBottom: 8, color: '#555' },
+  sectionTiles: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  chartBox: { marginBottom: 20 },
+  chartLabel: { fontSize: 16, marginBottom: 10, fontWeight: '600', color: '#333' },
 });
 
 export default Dashboard;
