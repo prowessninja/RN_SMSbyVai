@@ -21,6 +21,7 @@ export const fetchDropDownItems = async (token, branchId, yearId) => {
   const departmentsUrl = `${BASE_URL}/departments/?is_active=true&branch=${branchId}`;
   const designationsUrl = `${BASE_URL}/designations/?is_active=true`;
   const groupsUrl = `${BASE_URL}/groups/?branch=${branchId}`;
+  
   const standardsUrl = `${BASE_URL}/standards/?branch=${branchId}&is_active=true&academic_year=${yearId}`;
 
   try {

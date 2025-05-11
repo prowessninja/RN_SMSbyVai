@@ -1,24 +1,20 @@
-import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import React, { useContext, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator } from 'react-native';
 import LottieView from 'lottie-react-native';
+import { Dimensions } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
-import { fetchBranches, fetchAcademicYears, fetchCurrentUser } from '../api/dashboard';
-import HorizontalSelector from '../components/HorizontalSelector';
 import InfoTile from '../components/InfoTile';
 import { BarChart, PieChart, AreaChart, Grid } from 'react-native-svg-charts';
 import { Circle, G, Text as SVGText } from 'react-native-svg';
 import * as shape from 'd3-shape';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Dropdown } from 'react-native-element-dropdown'; // ✅ updated import
 
 const screenWidth = Dimensions.get('window').width;
 
 const Dashboard = () => {
-  const { token } = useContext(AuthContext);
-  const [user, setUser] = useState(null);
-  const [branches, setBranches] = useState([]);
-  const [years, setYears] = useState([]);
-  const [selectedBranch, setSelectedBranch] = useState(null);
-  const [selectedYear, setSelectedYear] = useState(null);
+  const { user, branches, academicYears, permissions } = useContext(AuthContext);
+  const [selectedBranch, setSelectedBranch] = useState(branches?.[0]?.id);
+  const [selectedYear, setSelectedYear] = useState(academicYears?.[0]?.id);
   const [loading, setLoading] = useState(true);
 
   const dashboardContent = {
@@ -75,26 +71,23 @@ const Dashboard = () => {
   const content = dashboardContent[role] || { tiles: [], charts: [] };
 
   useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        const [userData, branchData, yearData] = await Promise.all([
-          fetchCurrentUser(token),
-          fetchBranches(token),
-          fetchAcademicYears(token),
-        ]);
-        setUser(userData);
-        setBranches(branchData.results);
-        setYears(yearData.results);
-        setSelectedBranch(branchData.results[0]?.id);
-        setSelectedYear(yearData.results[0]?.id);
-      } catch (err) {
-        console.error('Dashboard init error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadInitialData();
-  }, [token]);
+    setLoading(false);
+  }, []);
+
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  const getAnimation = () => {
+    return require('../../assets/default.json');
+  };
+
+  const handleAcademicYearChange = (value) => {
+    setSelectedYear(value);
+  };
 
   const attendanceData = [80, 75, 90, 70, 85, 95, 60];
   const feeData = [
@@ -107,15 +100,7 @@ const Dashboard = () => {
 
   const Labels = ({ x, y, bandwidth, data }) =>
     data.map((value, index) => (
-      <SVGText
-        key={index}
-        x={x(index) + bandwidth / 2}
-        y={y(value) - 10}
-        fontSize={12}
-        fill="black"
-        alignmentBaseline="middle"
-        textAnchor="middle"
-      >
+      <SVGText key={index} x={x(index) + bandwidth / 2} y={y(value) - 10} fontSize={12} fill="black" textAnchor="middle">
         {value}
       </SVGText>
     ));
@@ -129,11 +114,10 @@ const Dashboard = () => {
           x={pieCentroid[0]}
           y={pieCentroid[1]}
           fill="blue"
-          textAnchor={'middle'}
-          alignmentBaseline={'middle'}
           fontSize={16}
           stroke="white"
           strokeWidth={0.2}
+          textAnchor="middle"
         >
           {data.label}
         </SVGText>
@@ -144,33 +128,11 @@ const Dashboard = () => {
     data.map((value, index) => (
       <G key={index}>
         <Circle cx={x(index)} cy={y(value)} r={4} stroke={'#2196F3'} fill={'white'} />
-        <SVGText
-          x={x(index)}
-          y={y(value) - 10}
-          fontSize={10}
-          fill={'black'}
-          alignmentBaseline={'middle'}
-          textAnchor={'middle'}
-        >
+        <SVGText x={x(index)} y={y(value) - 10} fontSize={10} fill={'black'} textAnchor={'middle'}>
           {Math.round(value / 1000)}k
         </SVGText>
       </G>
     ));
-
-  // ✅ Time-based greeting and Lottie selection
-  const getTimeGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  };
-
-  const getAnimation = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return require('../../assets/lottie/morning.json');
-    if (hour < 17) return require('../../assets/lottie/afternoon.json');
-    return require('../../assets/lottie/evening.json');
-  };
 
   if (loading) {
     return (
@@ -181,30 +143,46 @@ const Dashboard = () => {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.sectionGreeting}>
+        {user?.profile_image ? (
+          <Image source={{ uri: user.profile_image }} style={styles.profileImage} />
+        ) : (
+          <LottieView source={getAnimation()} autoPlay loop style={styles.animation} />
+        )}
         <Text style={styles.greeting}>{getTimeGreeting()}, {user?.first_name || 'User'}</Text>
         <Text style={styles.role}>{user?.group?.name || 'Role'}</Text>
-        <LottieView source={getAnimation()} autoPlay loop style={styles.animation} />
-      </View>
 
-      <View style={styles.sectionSelector}>
-        <Text style={styles.label}>Select Branch</Text>
-        <HorizontalSelector items={branches} selectedId={selectedBranch} onSelect={(b) => setSelectedBranch(b.id)} />
-        <Text style={styles.label}>Select Academic Year</Text>
-        <HorizontalSelector items={years} selectedId={selectedYear} onSelect={(y) => setSelectedYear(y.id)} />
+        <View style={styles.dropdownRow}>
+          <Dropdown
+            style={styles.dropdown}
+            data={academicYears.map(year => ({ label: year.name, value: year.id }))}
+            labelField="label"
+            valueField="value"
+            value={selectedYear}
+            placeholder="Academic Year"
+            placeholderStyle={styles.dropdownPlaceholder}
+            selectedTextStyle={styles.dropdownText}
+            onChange={(item) => handleAcademicYearChange(item.value)}
+          />
+          <Dropdown
+            style={styles.dropdown}
+            data={branches.map(branch => ({ label: branch.name, value: branch.id }))}
+            labelField="label"
+            valueField="value"
+            value={selectedBranch}
+            placeholder="Branch"
+            placeholderStyle={styles.dropdownPlaceholder}
+            selectedTextStyle={styles.dropdownText}
+            onChange={(item) => setSelectedBranch(item.value)}
+          />
+        </View>
       </View>
 
       {content.tiles.length > 0 && (
         <View style={styles.sectionTiles}>
           {content.tiles.map((tile, idx) => (
-            <InfoTile
-              key={idx}
-              title={tile.title}
-              value={tile.value}
-              icon={tile.icon}
-              backgroundColor={tile.bg}
-            />
+            <InfoTile key={idx} title={tile.title} value={tile.value} icon={tile.icon} backgroundColor={tile.bg} />
           ))}
         </View>
       )}
@@ -212,12 +190,7 @@ const Dashboard = () => {
       {content.charts.includes('attendance') && (
         <View style={styles.chartBox}>
           <Text style={styles.chartLabel}>Attendance %</Text>
-          <BarChart
-            style={{ height: 200 }}
-            data={attendanceData}
-            svg={{ fill: '#43A047' }}
-            contentInset={{ top: 20, bottom: 20 }}
-          >
+          <BarChart style={{ height: 200 }} data={attendanceData} svg={{ fill: '#43A047' }} contentInset={{ top: 20, bottom: 20 }}>
             <Grid />
             <Labels />
           </BarChart>
@@ -227,13 +200,7 @@ const Dashboard = () => {
       {content.charts.includes('fee') && (
         <View style={styles.chartBox}>
           <Text style={styles.chartLabel}>Fee Status</Text>
-          <PieChart
-            style={{ height: 200 }}
-            data={feeData}
-            innerRadius={40}
-            outerRadius={80}
-            labelRadius={110}
-          >
+          <PieChart style={{ height: 200 }} data={feeData} innerRadius={40} outerRadius={80} labelRadius={110}>
             <PieLabels />
           </PieChart>
         </View>
@@ -242,12 +209,7 @@ const Dashboard = () => {
       {content.charts.includes('expenditure') && (
         <View style={styles.chartBox}>
           <Text style={styles.chartLabel}>Expenditures</Text>
-          <BarChart
-            style={{ height: 200 }}
-            data={expenditureData}
-            svg={{ fill: '#2196F3' }}
-            contentInset={{ top: 20, bottom: 20 }}
-          >
+          <BarChart style={{ height: 200 }} data={expenditureData} svg={{ fill: '#2196F3' }} contentInset={{ top: 20, bottom: 20 }}>
             <Grid />
             <Labels />
           </BarChart>
@@ -279,23 +241,47 @@ const styles = StyleSheet.create({
   sectionGreeting: {
     alignItems: 'center',
     marginBottom: 15,
-    backgroundColor: '#E1F5FE',
+    backgroundColor: '#2d3e83',
     padding: 20,
     borderRadius: 16,
     elevation: 3,
   },
-  greeting: { fontSize: 22, fontWeight: '700', color: '#333' },
-  role: { fontSize: 14, color: '#555', marginBottom: 10 },
-  animation: { height: 80, width: 80 },
-  sectionSelector: {
-    marginBottom: 15,
-    backgroundColor: '#FFF3E0',
-    padding: 12,
-    borderRadius: 12,
-    elevation: 3,
+  profileImage: {
+    height: 80,
+    width: 80,
+    borderRadius: 40,
+    marginBottom: 10,
   },
-  label: { fontSize: 16, marginBottom: 8, color: '#555' },
-  sectionTiles: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  animation: { height: 80, width: 80, marginBottom: 10 },
+  greeting: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  role: { fontSize: 14, color: '#fff', marginBottom: 10 },
+  dropdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 10,
+  },
+  dropdown: {
+    width: '48%',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 40,
+  },
+  dropdownText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  dropdownPlaceholder: {
+    color: '#999',
+    fontSize: 14,
+  },
+  sectionTiles: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
   chartBox: { marginBottom: 20 },
   chartLabel: { fontSize: 16, marginBottom: 10, fontWeight: '600', color: '#333' },
 });

@@ -409,7 +409,7 @@
     headerTitle: { fontSize: 20, fontWeight: 'bold', marginLeft: 10 },
     sectionHeader: { backgroundColor: '#007AFF', padding: 10, borderRadius: 5, marginVertical: 10 },
     sectionHeaderText: { color: '#fff', fontWeight: 'bold' },
-    input: { borderWidth: 1, borderColor: '#ccc', padding: 10, marginBottom: 10, borderRadius: 5 },
+    input: { borderWidth: 1, borderColor: '#ccc', padding: 10, marginBottom: 10, borderRadius: 5,color: 'black' },
     disabled: { backgroundColor: '#f0f0f0' },
     button: { backgroundColor: '#007AFF', padding: 15, borderRadius: 5, alignItems: 'center', marginTop: 10 },
     buttonText: { color: '#fff', fontWeight: 'bold' },

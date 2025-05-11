@@ -1,207 +1,340 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  LayoutAnimation,
-  UIManager,
-  Platform,
   ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  LayoutAnimation,
+  Platform,
+  UIManager,
+  Image,
 } from 'react-native';
-import { DrawerContentScrollView } from '@react-navigation/drawer';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthContext } from '../context/AuthContext';
-import { fetchCurrentUser } from '../api/dashboard';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import ArrowIcon from 'react-native-vector-icons/MaterialIcons';
+import { AuthContext } from '../context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
+if (Platform.OS === 'android') {
+  UIManager.setLayoutAnimationEnabledExperimental &&
+    UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const menuItems = [
-  { label: 'Events', icon: 'calendar' },
-  { label: 'Users', icon: 'account-group' },
-  { label: 'Standards', icon: 'school' },
-  { label: 'Departments', icon: 'domain' },
-  {
-    label: 'Attendance',
-    icon: 'clipboard-list',
-    children: ['Class Attendance', 'Staff Attendance'],
-  },
-  { label: 'Time Table', icon: 'timetable' },
-  {
-    label: 'Fee',
-    icon: 'currency-inr',
-    children: ['Standard Fee', 'Fee List', 'Payments', 'Fee Analytics'],
-  },
-  {
-    label: 'Expenditure',
-    icon: 'currency-usd-off',
-    children: ['Expenditure List', 'Expense Analysis'],
-  },
-  { label: 'Income Dashboard', icon: 'finance' },
-  {
-    label: 'Stationery',
-    icon: 'notebook',
-    children: ['Stationery List', 'Stationery Fee'],
-  },
-  { label: 'Inventory', icon: 'archive' },
-  { label: 'Inventory Analytics', icon: 'chart-bar' },
-  { label: 'File Management', icon: 'file-document' },
-  { label: 'Tasks', icon: 'check-circle' },
-  { label: 'Exams', icon: 'file-certificate' },
-  { label: 'Student Marks', icon: 'clipboard-text' },
-  {
-    label: 'Transport',
-    icon: 'bus',
-    children: ['Vehicle List', 'Trip List', 'Tracking'],
-  },
-  {
-    label: 'Hostel',
-    icon: 'bed',
-    children: ['Hostel Rooms', 'Hostel Students', 'Visitors', 'Hostel Food', 'Hostel Inventory', 'Hostel Inventory Analytics'],
-  },
-  { label: 'Leave Management', icon: 'calendar-remove' },
-  { label: '24/7 Support', icon: 'headset' },
-  { label: 'User Permissions', icon: 'shield-account' },
-];
+const CustomDrawerContent = () => {
+  const { user, permissions } = useContext(AuthContext);
+  const navigation = useNavigation();
+  const [expandedItems, setExpandedItems] = useState({});
+  const [selectedRoute, setSelectedRoute] = useState(null);
 
-const CustomDrawerContent = (props) => {
-  const { token, logout } = useContext(AuthContext);
-  const [profileImage, setProfileImage] = useState(null);
-  const [fullName, setFullName] = useState('');
-  const [roleName, setRoleName] = useState('');
-  const [expandedMenus, setExpandedMenus] = useState({});
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const userData = await fetchCurrentUser(token);
-        setProfileImage(userData.profile_image);
-        const name = `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
-        setFullName(name || userData.email || 'User');
-        setRoleName(userData.group?.name || 'Role');
-      } catch (e) {
-        console.error('Error fetching user for drawer:', e);
-      }
-    })();
-  }, [token]);
-
-  const handleLogout = async () => {
-    await AsyncStorage.removeItem('userToken');
-    logout();
-    props.navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-  };
+  const groupedPermissions = {};
+  permissions.forEach((perm) => {
+    groupedPermissions[perm.codename] = true;
+  });
 
   const toggleExpand = (label) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedMenus((prev) => ({ ...prev, [label]: !prev[label] }));
+    setExpandedItems((prev) => ({
+      ...prev,
+      [label]: !prev[label],
+    }));
   };
 
-  const renderMenu = () =>
-    menuItems.map((item) => {
-      const isExpanded = !!expandedMenus[item.label];
-      return (
-        <View key={item.label}>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() =>
-              item.children?.length
-                ? toggleExpand(item.label)
-                : props.navigation.navigate(item.label)
-            }
-          >
-            <Icon name={item.icon} size={20} color="#fff" style={styles.menuIcon} />
-            <Text style={styles.menuItemText}>{item.label}</Text>
-            {item.children?.length > 0 && (
-              <ArrowIcon
-                name={isExpanded ? 'keyboard-arrow-down' : 'keyboard-arrow-right'}
-                size={20}
-                color="#fff"
-                style={styles.arrowIcon}
-              />
-            )}
-          </TouchableOpacity>
-          {item.children?.length > 0 && isExpanded && (
-            <View style={styles.subMenuContainer}>
-              {item.children.map((sub) => (
-                <TouchableOpacity
-                  key={sub}
-                  style={styles.subMenuItem}
-                  onPress={() => props.navigation.navigate(sub)}
-                >
-                  <Text style={styles.subMenuItemText}>• {sub}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+  const hasPermission = (requiredPermissions = []) => {
+    return requiredPermissions.some((perm) => groupedPermissions[perm]);
+  };
+
+  const handleNavigate = (label, routeName = null) => {
+    setSelectedRoute(label);
+    if (routeName) {
+      navigation.navigate(routeName);
+    }
+  };
+
+  const renderMenuItem = (item) => {
+    const isExpanded = expandedItems[item.label];
+    const showItem = hasPermission(item.permissions);
+
+    if (!showItem) return null;
+
+    return (
+      <View key={item.label}>
+        <TouchableOpacity
+          style={[
+            styles.menuItem,
+            selectedRoute === item.label && styles.activeMenuItem,
+          ]}
+          onPress={() => {
+            if (item.children) toggleExpand(item.label);
+            else handleNavigate(item.label, item.route || item.label);
+          }}
+        >
+          <Icon name={item.icon} size={20} color="#fff" style={{ width: 24 }} />
+          <Text style={styles.menuText}>{item.label}</Text>
+          {item.children && (
+            <Icon
+              name={isExpanded ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color="#fff"
+              style={{ marginLeft: 'auto' }}
+            />
           )}
-        </View>
-      );
-    });
+        </TouchableOpacity>
+
+        {isExpanded &&
+          item.children &&
+          item.children.map((child) =>
+            hasPermission(child.permissions) ? (
+              <TouchableOpacity
+                key={child.label}
+                style={[
+                  styles.subMenuItem,
+                  selectedRoute === child.label && styles.activeSubMenuItem,
+                ]}
+                onPress={() => handleNavigate(child.label, child.route || child.label)}
+              >
+                <Text style={styles.subMenuText}>• {child.label}</Text>
+              </TouchableOpacity>
+            ) : null
+          )}
+      </View>
+    );
+  };
+
+  const menuItems = [
+    { label: 'Events', icon: 'calendar', permissions: ['view_event'] },
+    { label: 'Users', icon: 'account-group', permissions: ['view_user'] },
+    { label: 'Standards', icon: 'school', permissions: ['view_standard'] },
+    { label: 'Departments', icon: 'domain', permissions: ['view_department'] },
+    {
+      label: 'Attendance',
+      icon: 'clipboard-list',
+      permissions: ['view_attendance'],
+      children: [
+        { label: 'Class Attendance', permissions: ['view_attendance'] },
+        { label: 'Staff Attendance', permissions: ['view_teacherattendance'] },
+      ],
+    },
+    { label: 'Time Table', icon: 'timetable', permissions: ['view_schedule'] },
+    {
+      label: 'Fee',
+      icon: 'currency-inr',
+      permissions: ['view_fee'],
+      children: [
+        { label: 'Standard Fee', permissions: ['view_fee'] },
+        { label: 'Fee List', permissions: ['view_feepayment'] },
+        { label: 'Payments', permissions: ['view_feepayment'] },
+        {
+          label: 'Fee Analytics',
+          permissions: ['view_feesummary', 'view_totalfeesummary'],
+        },
+      ],
+    },
+    {
+      label: 'Expenditure',
+      icon: 'currency-usd-off',
+      permissions: ['view_feesummary'],
+      children: [
+        { label: 'Expenditure List', permissions: ['view_feesummary'] },
+        { label: 'Expense Analysis', permissions: ['view_feesummary'] },
+      ],
+    },
+    {
+      label: 'Income Dashboard',
+      icon: 'finance',
+      permissions: ['view_totalfeesummary'],
+    },
+    {
+      label: 'Stationery',
+      icon: 'notebook',
+      permissions: ['view_stationary'],
+      children: [
+        { label: 'Stationery List', permissions: ['view_stationary'] },
+        { label: 'Stationery Fee', permissions: ['view_stationarytype'] },
+      ],
+    },
+    { label: 'Inventory', icon: 'archive', permissions: ['view_inventory'] },
+    {
+      label: 'Inventory Analytics',
+      icon: 'chart-bar',
+      permissions: ['view_inventorytracking'],
+    },
+    {
+      label: 'File Management',
+      icon: 'file-document',
+      permissions: ['view_document'],
+    },
+    {
+      label: 'Tasks',
+      icon: 'check-circle',
+      permissions: ['view_query', 'view_answer'],
+    },
+    {
+      label: 'Exams',
+      icon: 'file-certificate',
+      permissions: ['view_exam'],
+      children: [
+        { label: 'Exam List', permissions: ['view_exam'] },
+        { label: 'Exam Answers', permissions: ['view_examanswer'] },
+        { label: 'Exam Schedule', permissions: ['view_examschedule'] },
+      ],
+    },
+    {
+      label: 'Student Marks',
+      icon: 'clipboard-text',
+      permissions: ['view_examanswer'],
+    },
+    {
+      label: 'Transport',
+      icon: 'bus',
+      permissions: ['view_vehicle'],
+      children: [
+        { label: 'Vehicle List', permissions: ['view_vehicle'] },
+        { label: 'Trip List', permissions: ['view_trip'] },
+        { label: 'Tracking', permissions: ['view_vehicletracking'] },
+      ],
+    },
+    {
+      label: 'Hostel',
+      icon: 'bed',
+      permissions: ['view_hostelblock'],
+      children: [
+        { label: 'Hostel Rooms', permissions: ['view_hostelroom'] },
+        { label: 'Hostel Students', permissions: ['view_studentdetails'] },
+        { label: 'Visitors', permissions: ['view_visitor'] },
+        { label: 'Hostel Food', permissions: ['view_mealplan'] },
+        { label: 'Hostel Inventory', permissions: ['view_inventory'] },
+        {
+          label: 'Hostel Inventory Analytics',
+          permissions: ['view_inventorytracking'],
+        },
+      ],
+    },
+    {
+      label: 'Leave Management',
+      icon: 'calendar-remove',
+      permissions: ['view_leave'],
+    },
+    {
+      label: '24/7 Support',
+      icon: 'headset',
+      permissions: ['view_support'],
+    },
+    {
+      label: 'User Permissions',
+      icon: 'shield-account',
+      permissions: ['view_role'],
+    },
+  ];
 
   return (
-    <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerContainer}>
-      <View style={styles.headerContainer}>
-        <Image
-          source={
-            profileImage
-              ? { uri: profileImage }
-              : require('../../assets/avatar.png')
-          }
-          style={styles.avatar}
-        />
-        <Text style={styles.greeting}>Hello</Text>
-        <Text style={styles.username}>{fullName}</Text>
-        <Text style={styles.role}>{roleName}</Text>
-        <TouchableOpacity
-          style={styles.profileButton}
-          onPress={() => props.navigation.navigate('ViewProfile')}
-        >
-          <Text style={styles.profileButtonText}>View Profile</Text>
-        </TouchableOpacity>
+    <View style={styles.container}>
+      <ScrollView>
+        <View style={styles.profileContainer}>
+          <Image
+            source={{ uri: user?.profile_image || 'https://via.placeholder.com/80' }}
+            style={styles.avatar}
+          />
+          <Text style={styles.nameText}>
+            {user?.full_name || user?.username || 'Welcome'}
+          </Text>
+          <Text style={styles.roleText}>
+            {user?.group?.name || 'No Role'}
+          </Text>
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={() => navigation.navigate('ViewProfile')}
+          >
+            <Text style={styles.profileButtonText}>View Profile</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.separator} />
+
+        {menuItems.map(renderMenuItem)}
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <Text style={styles.poweredBy}>
+          Powered by: VisionariesAI Labs, V.2025.01.0001
+        </Text>
       </View>
-
-      <View style={styles.divider} />
-
-      <ScrollView style={styles.menuContainer}>{renderMenu()}</ScrollView>
-
-      <View style={styles.divider} />
-
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.footerText}>
-        Powered by: VisionariesAI Labs, V.2025.01.0001
-      </Text>
-    </DrawerContentScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  drawerContainer: { flex: 1, backgroundColor: '#2d3e83' },
-  headerContainer: { alignItems: 'center', paddingVertical: 20 },
-  avatar: { width: 80, height: 80, borderRadius: 40, marginBottom: 10, borderWidth: 2, borderColor: '#fff' },
-  greeting: { fontSize: 16, color: '#fff' },
-  username: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-  role: { fontSize: 14, color: '#ffca28', marginBottom: 5 },
-  profileButton: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#ffca28', borderRadius: 20 },
-  profileButtonText: { color: '#2d3e83', fontWeight: '600' },
-  divider: { height: 1, backgroundColor: '#fff', marginVertical: 10 },
-  menuContainer: { paddingHorizontal: 10, flexGrow: 1 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
-  menuIcon: { marginRight: 10 },
-  menuItemText: { fontSize: 16, color: '#fff', flex: 1 },
-  arrowIcon: { marginLeft: 'auto' },
-  subMenuContainer: { paddingLeft: 30 },
-  subMenuItem: { paddingVertical: 6 },
-  subMenuItemText: { fontSize: 14, color: '#e0e0e0' },
-  logoutButton: { padding: 15, backgroundColor: '#f44336', marginHorizontal: 10, borderRadius: 8, marginBottom: 20 },
-  logoutText: { color: '#fff', fontWeight: 'bold', textAlign: 'center' },
-  footerText: { color: '#fff', textAlign: 'center', marginVertical: 10, fontSize: 12 },
+  container: { flex: 1, backgroundColor: '#2d3e83', paddingTop: 40 },
+  profileContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 16,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#ccc',
+  },
+  nameText: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: 'bold',
+    marginTop: 10,
+  },
+  roleText: {
+    fontSize: 14,
+    color: '#ccc',
+    marginBottom: 6,
+  },
+  profileButton: {
+    backgroundColor: '#4455aa',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 6,
+  },
+  profileButtonText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#555',
+    marginVertical: 10,
+    marginHorizontal: 16,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  activeMenuItem: {
+    backgroundColor: '#4455aa',
+    borderRadius: 8,
+  },
+  menuText: { color: '#fff', fontSize: 16, marginLeft: 10 },
+  subMenuItem: {
+    paddingLeft: 50,
+    paddingVertical: 8,
+  },
+  activeSubMenuItem: {
+    backgroundColor: '#3c4b9a',
+    borderRadius: 8,
+  },
+  subMenuText: {
+    color: '#ccc',
+    fontSize: 14,
+  },
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: '#444',
+    padding: 16,
+  },
+  poweredBy: {
+    color: '#bbb',
+    fontSize: 12,
+    textAlign: 'center',
+  },
 });
 
 export default CustomDrawerContent;

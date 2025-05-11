@@ -1,12 +1,10 @@
-// common.js
-
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Your existing PageHeader code
+// Page header UI component
 export const PageHeader = ({ navigation, title, iconName = 'group-add' }) => (
   <View style={styles.header}>
     <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -26,16 +24,21 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     paddingBottom: 8,
   },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#2d3e83', marginLeft: 10 },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2d3e83',
+    marginLeft: 10,
+  },
 });
 
-// Axios instance setup for API calls
+// Axios instance
 const api = axios.create({
   baseURL: 'https://vai.dev.sms.visionariesai.com/api/',
   timeout: 10000,
 });
 
-// Adding Authorization to request headers
+// Attach Authorization token automatically
 api.interceptors.request.use(
   async (config) => {
     const token = await AsyncStorage.getItem('userToken');
@@ -47,7 +50,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Logging API response errors
+// Error logging
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -56,7 +59,7 @@ api.interceptors.response.use(
   }
 );
 
-// Existing API functions
+// Core API functions
 export const fetchCurrentUserInfo = async () => {
   return await api.get('users/current-user/');
 };
@@ -69,7 +72,6 @@ export const fetchAcademicYears = async () => {
   return await api.get('academic-years/');
 };
 
-// New helper function to fetch standards based on year and branch
 export const fetchStandardsForYearBranch = async (yearId, branchId, token) => {
   try {
     const response = await api.get('standards/', {
@@ -79,19 +81,35 @@ export const fetchStandardsForYearBranch = async (yearId, branchId, token) => {
       params: {
         year: yearId,
         branch: branchId,
-      }
+      },
     });
-    return response.data; // Data containing standards, total students, sections, status, etc.
+    return response.data;
   } catch (error) {
     console.error('Error fetching standards data:', error);
     throw error;
   }
 };
 
-// Exporting the new function
+// ✅ New function to fetch sections by branch and standard
+export const fetchSectionsByBranchAndStandard = async (branchId, standardId) => {
+  try {
+    const response = await api.get('sections/', {
+      params: {
+        branch: branchId,
+        standard: standardId,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching sections:', error);
+    throw error;
+  }
+};
+
 export default {
   fetchActiveBranches,
   fetchAcademicYears,
   fetchCurrentUserInfo,
-  fetchStandardsForYearBranch, // Export the new function
+  fetchStandardsForYearBranch,
+  fetchSectionsByBranchAndStandard, // included in the default export
 };

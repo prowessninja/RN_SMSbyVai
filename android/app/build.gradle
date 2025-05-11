@@ -76,6 +76,15 @@ android {
                 output.versionCodeOverride =
                         defaultConfig.versionCode * 1000 + versionCodes.get(abi)
             }
+
+            // 👇 Custom APK name format
+            def appName = "SMS"
+            def buildType = variant.buildType.name
+            def versionName = variant.versionName
+            def versionCode = variant.versionCode
+            def date = new Date().format("yyyyMMdd")
+
+            output.outputFileName = "${appName}-${buildType}-v${versionName}(${versionCode})-${date}.apk"
         }
     }
 }

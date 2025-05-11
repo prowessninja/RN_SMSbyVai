@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,87 +7,131 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import LottieView from 'lottie-react-native';
+import { Dropdown } from 'react-native-element-dropdown';
 import { AuthContext } from '../context/AuthContext';
-import HorizontalSelector from '../components/HorizontalSelector';
 import { fetchUsersList } from '../api/userlist';
-import { fetchBranches, fetchAcademicYears } from '../api/dashboard';
 import UserCardList from '../components/UserCardList';
+import debounce from 'lodash.debounce';
+import PermissionsHOC from '../hoc/PermissionsHOC';
 
-const UsersScreen = () => {
+
+const UsersScreen = ({ hasPermission }) => {
   const navigation = useNavigation();
-  const { token } = useContext(AuthContext);
+  const { token, user, academicYears, branches } = useContext(AuthContext);
 
   const [users, setUsers] = useState([]);
-  const [years, setYears] = useState([]);
-  const [branches, setBranches] = useState([]);
   const [groups, setGroups] = useState([]);
   const [selectedYear, setSelectedYear] = useState(null);
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [yearData, branchData] = await Promise.all([
-          fetchAcademicYears(token),
-          fetchBranches(token),
-        ]);
-        setYears(yearData.results || []);
-        setBranches(branchData.results || []);
-        if (yearData.results?.length) setSelectedYear(yearData.results[0].id);{
-          const yearIds = yearData.results.map(year => year.id);
-          console.log('Year IDs:', yearIds);
-        }
-        if (branchData.results?.length) setSelectedBranch(branchData.results[0].id);{
-          const branchIds = branchData.results.map(branch => branch.id);
-          console.log('Branch IDs:', branchIds);
-        }
-      } catch (err) {
-        console.error('Error loading filters:', err);
-      }
-    })();
-  }, [token]);
+  const debounceRef = useRef();
 
   useEffect(() => {
-    (async () => {
+    if (academicYears?.length && !selectedYear) {
+      setSelectedYear(academicYears[0].id);
+    }
+    if (branches?.length && !selectedBranch) {
+      setSelectedBranch(branches[0].id);
+    }
+  }, [academicYears, branches]);
+
+  const debouncedSetSearch = useCallback(
+    debounce(text => {
+      setDebouncedSearch(text);
+      setPage(1);
+    }, 400),
+    []
+  );
+
+  const handleSearch = text => {
+    setSearchText(text);
+    debouncedSetSearch(text);
+  };
+
+  useEffect(() => {
+    return () => debouncedSetSearch.cancel();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      setSearchText('');
+      setDebouncedSearch('');
+      setSelectedGroup(null);
+      setPage(1);
+
+      // Refresh groups whenever screen gains focus
+      if (selectedYear && selectedBranch) {
+        const fetchGroups = async () => {
+          try {
+            const filters = {
+              academic_year: selectedYear,
+              branch: selectedBranch,
+              page_size: 10,
+            };
+            const { results } = await fetchUsersList(token, filters);
+            const uniqueGroups = [
+              ...new Map(results.map(u => [u.group?.id, u.group])).values(),
+            ].filter(Boolean);
+            setGroups(uniqueGroups);
+          } catch (err) {
+            console.error('Error fetching groups:', err);
+          }
+        };
+
+        fetchGroups();
+      }
+    }, [selectedYear, selectedBranch]) // Re-run when year or branch changes
+  );
+
+  useEffect(() => {
+    if (!token || !selectedYear || !selectedBranch) return;
+
+    let isMounted = true;
+
+    const fetchData = async () => {
       setLoading(true);
       try {
         const filters = {
           academic_year: selectedYear,
           branch: selectedBranch,
           group: selectedGroup,
-          search: searchText,
+          search: debouncedSearch,
           page,
           page_size: 10,
         };
         const { results = [], next } = await fetchUsersList(token, filters);
-        setUsers(prev => page === 1 ? results : [...prev, ...results]);
-        setHasMore(!!next);
-        setGroups(
-          [...new Map(results.map(u => [u.group?.id, u.group])).values()].filter(Boolean)
-        );
+
+        if (isMounted) {
+          setUsers(prev => (page === 1 ? results : [...prev, ...results]));
+          setHasMore(!!next);
+        }
       } catch (err) {
         console.error('Error loading users:', err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
-    })();
-  }, [token, selectedYear, selectedBranch, selectedGroup, searchText, page]);
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token, selectedYear, selectedBranch, selectedGroup, debouncedSearch, page]);
 
   const handleLoadMore = () => {
     if (hasMore && !loading) setPage(p => p + 1);
-  };
-
-  const handleSearch = text => {
-    setSearchText(text);
-    setPage(1);
   };
 
   const handleAddUserPress = () => {
@@ -95,14 +139,14 @@ const UsersScreen = () => {
       'Confirm',
       `New User will be created in Branch: '${selectedBranch}'. Do you want to proceed?`,
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Yes',
           onPress: () => {
-            navigation.navigate('AddUser', { branchId: selectedBranch, yearId: selectedYear });
+            navigation.navigate('AddUser', {
+              branchId: selectedBranch,
+              yearId: selectedYear,
+            });
           },
         },
       ],
@@ -112,60 +156,94 @@ const UsersScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      <View style={styles.sectionGreeting}>
+        {user?.profile_image ? (
+          <Image source={{ uri: user.profile_image }} style={styles.profileImage} />
+        ) : (
+          <LottieView
+            source={require('../../assets/default.json')}
+            autoPlay
+            loop
+            style={styles.animation}
+          />
+        )}
+        <Text style={styles.greeting}>{user?.first_name || 'User'}</Text>
+        <Text style={styles.role}>{user?.group?.name || 'Role'}</Text>
+
+        <View style={styles.dropdownRow}>
+          <Dropdown
+            style={styles.dropdown}
+            data={academicYears.map(year => ({ label: year.name, value: year.id }))} 
+            labelField="label"
+            valueField="value"
+            value={selectedYear}
+            placeholder="Academic Year"
+            placeholderStyle={styles.dropdownPlaceholder}
+            selectedTextStyle={styles.dropdownText}
+            onChange={item => {
+              setSelectedYear(item.value);
+              setPage(1);
+            }}
+          />
+          <Dropdown
+            style={styles.dropdown}
+            data={branches.map(branch => ({ label: branch.name, value: branch.id }))} 
+            labelField="label"
+            valueField="value"
+            value={selectedBranch}
+            placeholder="Branch"
+            placeholderStyle={styles.dropdownPlaceholder}
+            selectedTextStyle={styles.dropdownText}
+            onChange={item => {
+              setSelectedBranch(item.value);
+              setPage(1);
+            }}
+          />
+        </View>
+      </View>
+
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={24} color="#007AFF" />
+          <Icon name="arrow-left" size={24} color="#2d3e83" />
         </TouchableOpacity>
-        <Icon name="account-group" size={24} color="#007AFF" style={{ marginLeft: 10 }} />
+        <Icon name="account-group" size={24} color="#2d3e83" style={{ marginLeft: 10 }} />
         <Text style={styles.title}>Users</Text>
-
-        {/* Add User button */}
+        {hasPermission?.('add_user') && (
         <TouchableOpacity
           style={[styles.addButton, { flexDirection: 'row', alignItems: 'center' }]}
           onPress={handleAddUserPress}
         >
-          <Icon name="account-plus" size={24} color="#007AFF" />
+          <Icon name="account-plus" size={24} color="#2d3e83" />
           <Text style={styles.addText}>Add User</Text>
         </TouchableOpacity>
+          )}
+      </View>
+      
+
+      <View style={styles.filterRow}>
+        <Dropdown
+          style={styles.dropdownHalf}
+          data={groups.map(group => ({ label: group.name, value: group.id }))}
+          labelField="label"
+          valueField="value"
+          value={selectedGroup}
+          placeholder="User Group"
+          placeholderStyle={styles.dropdownPlaceholder}
+          selectedTextStyle={styles.dropdownText}
+          onChange={item => {
+            setSelectedGroup(item.value);
+            setPage(1);
+          }}
+        />
+        <TextInput
+          style={styles.searchInputHalf}
+          placeholder="Search by name, identifier..."
+          value={searchText}
+          onChangeText={handleSearch}
+        />
       </View>
 
-      {/* Filters */}
-      <Text style={styles.filterLabel}>Academic Year</Text>
-      <HorizontalSelector
-        items={years}
-        selectedId={selectedYear}
-        onSelect={item => { setSelectedYear(item.id); setPage(1); }}
-      />
-
-      <Text style={styles.filterLabel}>Branch</Text>
-      <HorizontalSelector
-        items={branches}
-        selectedId={selectedBranch}
-        onSelect={item => { setSelectedBranch(item.id); setPage(1); 
-        console.log('Selected Branch ID:', item.id);}}
-      />
-
-      <Text style={styles.filterLabel}>User Group</Text>
-      <HorizontalSelector
-        items={groups}
-        selectedId={selectedGroup}
-        onSelect={item => { setSelectedGroup(item.id); setPage(1); }}
-      />
-
-      <View style={styles.divider} />
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Search by name, identifier, contact..."
-        value={searchText}
-        onChangeText={handleSearch}
-      />
-
-      <UserCardList
-        users={users}
-        loading={loading}
-        onEndReached={handleLoadMore}
-      />
+      <UserCardList users={users} loading={loading} onEndReached={handleLoadMore} />
 
       {loading && (
         <ActivityIndicator
@@ -179,54 +257,76 @@ const UsersScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 15,
-    backgroundColor: '#f4f6f9',
-  },
-  headerRow: {
-    flexDirection: 'row',
+  container: { flex: 1, padding: 15, backgroundColor: '#f4f6f9' },
+
+  // Profile header
+  sectionGreeting: {
     alignItems: 'center',
+    marginBottom: 15,
+    backgroundColor: '#2d3e83',
+    padding: 20,
+    borderRadius: 16,
+    elevation: 3,
+  },
+  profileImage: {
+    height: 80,
+    width: 80,
+    borderRadius: 40,
     marginBottom: 10,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginLeft: 8,
-    color: '#2d3e83',
-    flex: 1,
-  },
-  addButton: {
-    marginLeft: 'auto',
-  },
-  addText: {
-    marginLeft: 6,
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '500',
-  },
-  filterLabel: {
+  animation: { height: 80, width: 80, marginBottom: 10 },
+  greeting: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  role: { fontSize: 14, color: '#fff', marginBottom: 10 },
+  dropdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
     marginTop: 10,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#ddd',
-    marginVertical: 10,
-  },
-  searchInput: {
+  dropdown: {
+    width: '48%',
     backgroundColor: '#fff',
-    padding: 10,
     borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 40,
+  },
+  dropdownText: { fontSize: 14, color: '#333' },
+  dropdownPlaceholder: { color: '#999', fontSize: 14 },
+
+  // Header + Add
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  title: {
+    fontSize: 22, fontWeight: 'bold', marginLeft: 8, color: '#2d3e83', flex: 1,
+  },
+  addButton: { marginLeft: 'auto' },
+  addText: { marginLeft: 6, fontSize: 16, color: '#2d3e83', fontWeight: '500' },
+
+  // Group + Search horizontal layout
+  filterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
     marginBottom: 10,
+  },
+  dropdownHalf: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 40,
+  },
+  searchInputHalf: {
+    flex: 1,
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#ddd',
+    height: 40,
   },
-  loadingIndicator: {
-    marginVertical: 20,
-  },
+
+  // Loader
+  loadingIndicator: { marginVertical: 20 },
 });
 
-export default UsersScreen;
+export default PermissionsHOC(UsersScreen, ['view_user']);
