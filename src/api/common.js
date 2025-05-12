@@ -106,10 +106,39 @@ export const fetchSectionsByBranchAndStandard = async (branchId, standardId) => 
   }
 };
 
+export const getDepartmentsForBranchAndYear = async (selectedBranchId, selectedYearId) => {
+  try {
+    const response = await api.get('departments/', {
+      params: {
+        inactive: true,
+        branch: selectedBranchId,
+        academic_year: selectedYearId,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Failed to retrieve department list:', error);
+    throw error;
+  }
+};
+
+export const fetchBranchDetailsById = async (branchId) => {
+  try {
+    const response = await api.get(`branches/?branch=${branchId}`);
+    console.log('From common.js:',response.data.results[0]);
+    return response.data.results[0];
+  } catch (error) {
+    console.error('Failed to fetch branch details:', error);
+    throw error;
+  }
+};
+
 export default {
   fetchActiveBranches,
   fetchAcademicYears,
   fetchCurrentUserInfo,
   fetchStandardsForYearBranch,
-  fetchSectionsByBranchAndStandard, // included in the default export
+  fetchSectionsByBranchAndStandard,
+  getDepartmentsForBranchAndYear, // included in the default export
+  fetchBranchDetailsById
 };

@@ -16,9 +16,12 @@ import {
 } from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import Eyecon from 'react-native-vector-icons/FontAwesome';
 import CommonAPI from '../api/common';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LottieView from 'lottie-react-native';
+import { useNavigation } from '@react-navigation/native';
+
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -26,11 +29,13 @@ if (Platform.OS === 'android') {
 
 const RANDOM_BG_COLORS = ['#f9c2ff', '#d0f0c0', '#cce5ff', '#ffecb3'];
 
+
 const StandardsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
   const [currentUserRole, setCurrentUserRole] = useState('');
+  const [currentUserName, setCurrentUserName] = useState('');
   const [academicYears, setAcademicYears] = useState([]);
   const [branches, setBranches] = useState([]);
   const [selectedYear, setSelectedYear] = useState(null);
@@ -41,9 +46,12 @@ const StandardsScreen = () => {
   const [sectionsByStandard, setSectionsByStandard] = useState({});
   const [expandedStandards, setExpandedStandards] = useState({});
 
+  const [showProfileCard, setShowProfileCard] = useState(true);
+
   useEffect(() => {
     fetchMetaData();
   }, []);
+  const navigation = useNavigation();
 
   const fetchMetaData = async () => {
     try {
@@ -60,6 +68,7 @@ const StandardsScreen = () => {
       setAcademicYears(academicYearsData.map(year => ({ label: year.name, value: year.id })));
 
       const userData = userRes.data;
+      setCurrentUserName(userData.first_name || 'User');
       setCurrentUserRole(userData.group?.name || 'Role');
       setProfileImage(userData.profile_image);
 
@@ -155,64 +164,63 @@ const StandardsScreen = () => {
   );
 
   const renderStandardItem = ({ item: standard }) => {
-    const isExpanded = expandedStandards[standard.id];
-    const sections = sectionsByStandard[standard.id];
+  const isExpanded = expandedStandards[standard.id];
+  const sections = sectionsByStandard[standard.id];
 
-    return (
-      <View key={standard.id}>
-        <TouchableOpacity
-          onPress={() => handleCardPress(standard)}
-          activeOpacity={0.7}
-          style={[
-            styles.cardContainer,
-            {
-              backgroundColor: RANDOM_BG_COLORS[standard.id % 4],
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            },
-          ]}
-        >
-          <View>
-            <Text style={styles.cardTitle}>{standard.name}</Text>
-            <Text>Total Students: {standard.student_assigned_count}</Text>
-            <Text>Sections: {standard.section_count}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-              <Icon
-                name={standard.is_active ? 'check-circle' : 'close'}
-                size={16}
-                color={standard.is_active ? '#4CAF50' : '#f44336'}
-              />
-              <Text style={{ marginLeft: 6, color: '#555' }}>
-                {standard.is_active ? 'Active' : 'Inactive'}
-              </Text>
-            </View>
+  return (
+    <View key={standard.id} style={{ marginBottom: 12 }}>
+      <View style={[styles.cardContainer, { backgroundColor: RANDOM_BG_COLORS[standard.id % 4] }]}>
+        <View style={styles.cardTopRow}>
+          <Text style={styles.cardTitle}>{standard.name}</Text>
+
+          <View style={styles.actionButtonsRow}>
+            <TouchableOpacity style={styles.stdActionBtn}><Text>View</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.stdActionBtn}><Text>Edit</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.stdActionBtn}><Text>Mark Inactive</Text></TouchableOpacity>
           </View>
-          <View style={styles.iconContainer}>
+
+          <TouchableOpacity onPress={() => handleCardPress(standard)} style={styles.expandIcon}>
             <Icon
               name={isExpanded ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
               size={24}
               color="#2d3e83"
             />
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
 
-        {isExpanded && (
-          <>
-            {sections === undefined ? (
-              <ActivityIndicator style={{ marginTop: 10 }} size="small" color="#2d3e83" />
-            ) : sections.length === 0 ? (
-              <Text style={{ marginTop: 10, color: '#888', marginLeft: 10 }}>
-                No sections available.
-              </Text>
-            ) : (
-              sections.map(renderSectionCard)
-            )}
-          </>
-        )}
+        <View style={styles.cardMetaRow}>
+          <Text>Total Students: {standard.student_assigned_count}</Text>
+          <Text>Sections: {standard.section_count}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+            <Icon
+              name={standard.is_active ? 'check-circle' : 'close'}
+              size={16}
+              color={standard.is_active ? '#4CAF50' : '#f44336'}
+            />
+            <Text style={{ marginLeft: 6, color: '#555' }}>
+              {standard.is_active ? 'Active' : 'Inactive'}
+            </Text>
+          </View>
+        </View>
       </View>
-    );
-  };
+
+      {isExpanded && (
+        <View style={{ paddingLeft: 10 }}>
+          {sections === undefined ? (
+            <ActivityIndicator style={{ marginTop: 10 }} size="small" color="#2d3e83" />
+          ) : sections.length === 0 ? (
+            <Text style={{ marginTop: 10, color: '#888', marginLeft: 10 }}>
+              No sections available.
+            </Text>
+          ) : (
+            sections.map(renderSectionCard)
+          )}
+        </View>
+      )}
+    </View>
+  );
+};
+
 
   return (
     <View style={{ flex: 1 }}>
@@ -229,7 +237,19 @@ const StandardsScreen = () => {
         </View>
       ) : (
         <>
+          <TouchableOpacity
+  onPress={() => setShowProfileCard(prev => !prev)}
+  style={styles.iconToggle}
+>
+  <Eyecon
+    name={showProfileCard ? 'eye-slash' : 'eye'}
+    size={15}
+    color="#fff"
+  />
+</TouchableOpacity>
+
           <View style={{ padding: 15, marginBottom: 1 }}>
+            {showProfileCard && (
             <View style={styles.profileContainer}>
               {profileImage ? (
                 <Image source={{ uri: profileImage }} style={styles.avatar} />
@@ -241,6 +261,7 @@ const StandardsScreen = () => {
               style={styles.animation}
               />
               )}
+              <Text style={styles.greeting}>{currentUserName}</Text>
               <Text style={styles.roleText}>{currentUserRole}</Text>
             
 
@@ -264,8 +285,23 @@ const StandardsScreen = () => {
                 onChange={item => handleBranchChange(item.value)}
               />
               </View>
-            </View>
+            </View> )}
           </View>
+
+          <View style={styles.headerRow}>
+            <View style={styles.headerLeft}>
+                <TouchableOpacity onPress={() => navigation.goBack()}>
+                <Icon name="arrow-back" size={24} color="#2d3e83" />
+                </TouchableOpacity>
+                <Icon name="school" size={24} color="#2d3e83" style={{ marginLeft: 10 }} />
+                <Text style={styles.headerTitle}>Standards</Text>
+            </View>
+              <TouchableOpacity style={styles.createButton} onPress={() => {/* Add create standard logic */}}>
+                <Icon name="add-circle-outline" size={20} color="#2d3e83" />
+                <Text style={styles.createText}>Create Standard</Text>
+                </TouchableOpacity>
+            </View>
+
 
           <FlatList
             data={standardsData}
@@ -284,6 +320,7 @@ const StandardsScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 15, backgroundColor: '#f4f6f9' },
+  greeting: { fontSize: 22, fontWeight: '700', color: '#fff' },
   overlayContainer: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -366,6 +403,84 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   animation: { height: 80, width: 80, marginBottom: 10 },
+  headerRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  paddingHorizontal: 20,
+  paddingBottom: 10,
+},
+
+headerLeft: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+
+headerTitle: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  marginLeft: 10,
+  color: '#2d3e83',
+},
+
+createButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#e6ecf7',
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  borderRadius: 8,
+},
+
+createText: {
+  marginLeft: 6,
+  fontSize: 14,
+  color: '#2d3e83',
+  fontWeight: '500',
+},
+cardTopRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 8,
+},
+
+cardMetaRow: {
+marginTop: 10,
+paddingTop: 8,
+borderTopWidth: 1,
+borderTopColor: '#2d3e83',
+},
+
+actionButtonsRow: {
+  flexDirection: 'row',
+  flexShrink: 1,
+  gap: 8,
+},
+
+stdActionBtn: {
+  backgroundColor: '#fff',
+  paddingHorizontal: 8,
+  paddingVertical: 4,
+  borderRadius: 6,
+  borderWidth: 1,
+  borderColor: '#ccc',
+},
+
+expandIcon: {
+  padding: 4,
+  marginLeft: 6,
+},
+iconToggle: {
+  alignSelf: 'flex-end',
+  backgroundColor: '#2d3e83',
+  padding: 8,
+  borderRadius: 20,
+  marginRight: 10,
+  marginTop: 10,
+},
+
+
 });
 
 export default StandardsScreen;

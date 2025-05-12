@@ -1,118 +1,388 @@
-// DepartmentsScreen.js
-import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { AuthContext } from '../context/AuthContext';
-// import { fetchDepartments } from '../api/departments'; // Uncomment when your API is ready
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  Image,
+  Modal,
+  ActivityIndicator,
+  StyleSheet,
+  RefreshControl,
+  TouchableOpacity,
+  LayoutAnimation,
+  UIManager,
+  Platform,
+  FlatList,
+} from 'react-native';
+import { Dropdown } from 'react-native-element-dropdown';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import Eyecon from 'react-native-vector-icons/FontAwesome';
+import CommonAPI from '../api/common';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import LottieView from 'lottie-react-native';
+import { useNavigation } from '@react-navigation/native';
 
-const DepartmentsScreen = ({ navigation }) => {
-  const { token } = useContext(AuthContext);
-  const [departments, setDepartments] = useState([]);
+if (Platform.OS === 'android') {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
+
+const RANDOM_BG_COLORS = ['#f9c2ff', '#d0f0c0', '#cce5ff', '#ffecb3'];
+
+const DepartmentsScreen = () => {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [profileImage, setProfileImage] = useState(null);
+  const [currentUserRole, setCurrentUserRole] = useState('');
+  const [currentUserName, setCurrentUserName] = useState('');
+  const [academicYears, setAcademicYears] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [selectedYear, setSelectedYear] = useState(null);
+  const [selectedBranch, setSelectedBranch] = useState(null);
+  const [departmentsData, setDepartmentsData] = useState([]);
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [overlayText, setOverlayText] = useState('');
+  const [expandedDepartments, setExpandedDepartments] = useState({});
+  const [showProfileCard, setShowProfileCard] = useState(true);
 
   useEffect(() => {
-    loadDepartments();
+    fetchMetaData();
   }, []);
+  const navigation = useNavigation();
 
-  const loadDepartments = async () => {
+  const fetchMetaData = async () => {
     try {
-      // TODO: Uncomment when API is ready
-      // const data = await fetchDepartments(token);
+      const [branchRes, yearRes, userRes] = await Promise.all([
+        CommonAPI.fetchActiveBranches(),
+        CommonAPI.fetchAcademicYears(),
+        CommonAPI.fetchCurrentUserInfo(),
+      ]);
 
-      // Mock data for testing:
-      const data = [
-        { id: 1, name: 'Human Resources' },
-        { id: 2, name: 'Finance' },
-        { id: 3, name: 'Engineering' },
-      ];
+      const branchesData = branchRes.data?.results || [];
+      const academicYearsData = yearRes.data?.results || [];
 
-      setDepartments(data);
+      setBranches(branchesData.map(branch => ({ label: branch.name, value: branch.id })));
+      setAcademicYears(academicYearsData.map(year => ({ label: year.name, value: year.id })));
+
+      const userData = userRes.data;
+      setCurrentUserName(userData.first_name || 'User');
+      setCurrentUserRole(userData.group?.name || 'Role');
+      setProfileImage(userData.profile_image);
+
+      if (branchesData.length > 0) setSelectedBranch(branchesData[0].id);
+      if (academicYearsData.length > 0) setSelectedYear(academicYearsData[0].id);
+
+      fetchDepartmentsData(academicYearsData[0].id, branchesData[0].id);
     } catch (error) {
-      console.error('Error loading departments:', error);
+      console.error('Error fetching metadata:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const renderItem = ({ item }) => (
-    <View style={styles.itemContainer}>
-      <Text style={styles.itemText}>{item.name}</Text>
-      <TouchableOpacity onPress={() => navigation.navigate('EditDepartment', { department: item })}>
-        <Icon name="pencil" size={20} color="#2d3e83" />
-      </TouchableOpacity>
-    </View>
-  );
+  const fetchDepartmentsData = async (yearId, branchId) => {
+  try {
+    const departmentsRes = await CommonAPI.getDepartmentsForBranchAndYear(branchId, yearId);
+    setDepartmentsData(departmentsRes.results || []);
+  } catch (error) {
+    console.error('Error fetching departments data:', error);
+  }
+};
+
+
+  const handleAcademicYearChange = (yearId) => {
+    setSelectedYear(yearId);
+    setShowOverlay(true);
+    setOverlayText('Academic Year changed successfully');
+    fetchDepartmentsData(yearId, selectedBranch);
+    setTimeout(() => setShowOverlay(false), 1000);
+  };
+
+  const handleBranchChange = (branchId) => {
+    setSelectedBranch(branchId);
+    setShowOverlay(true);
+    setOverlayText('Branch changed successfully');
+    fetchDepartmentsData(selectedYear, branchId);
+    setTimeout(() => setShowOverlay(false), 1000);
+  };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchDepartmentsData(selectedYear, selectedBranch).finally(() => setRefreshing(false));
+  }, [selectedYear, selectedBranch]);
+
+  const handleCardPress = (department) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    const isExpanded = expandedDepartments[department.id];
+    if (isExpanded) {
+      setExpandedDepartments(prev => ({ ...prev, [department.id]: false }));
+      return;
+    }
+
+    setExpandedDepartments(prev => ({ ...prev, [department.id]: true }));
+  };
+
+  const renderDepartmentCard = (department) => {
+    const isExpanded = expandedDepartments[department.id];
+    const cardColor = RANDOM_BG_COLORS[department.id % RANDOM_BG_COLORS.length];
+    const hodName = department.head_of_the_department
+      ? `${department.head_of_the_department.first_name} ${department.head_of_the_department.last_name}`.trim()
+      : 'N/A';
+
+    return (
+      <View key={department.id} style={[styles.cardContainer, { backgroundColor: cardColor }]}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>{department.name}</Text>
+          <TouchableOpacity onPress={() => handleCardPress(department)}>
+            <Icon name={isExpanded ? 'expand-less' : 'expand-more'} size={24} color="#333" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.cardMetaRow}>
+          <Text>HOD: {hodName}</Text>
+          <Text>Total Members: {department.staff_count}</Text>
+          <Text>Status: {department.is_active ? 'Active' : 'Inactive'}</Text>
+        </View>
+
+        {isExpanded && (
+          <View style={styles.expandedActions}>
+            <TouchableOpacity style={styles.actionButton}>
+              <Eyecon name="eye" size={16} color="#fff" />
+              <Text style={styles.actionText}>View</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton}>
+              <Icon name="person-add" size={16} color="#fff" />
+              <Text style={styles.actionText}>Assign Teacher</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton}>
+              <Icon name="block" size={16} color="#fff" />
+              <Text style={styles.actionText}>Mark Inactive</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   return (
-    <View style={styles.container}>
-      {/* Custom Header */}
-      <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
-          <Icon name="arrow-left" size={24} color="#2d3e83" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Departments</Text>
-      </View>
+    <View style={{ flex: 1 }}>
+      <Modal visible={showOverlay} transparent animationType="fade">
+        <View style={styles.overlayContainer}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.overlayText}>{overlayText}</Text>
+        </View>
+      </Modal>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#2d3e83" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#2d3e83" />
+        </View>
       ) : (
-        <FlatList
-          data={departments}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContainer}
-          ListEmptyComponent={<Text style={styles.emptyText}>No departments available.</Text>}
-        />
-      )}
+        <>
+          <TouchableOpacity onPress={() => setShowProfileCard(prev => !prev)} style={styles.iconToggle}>
+            <Eyecon name={showProfileCard ? 'eye-slash' : 'eye'} size={15} color="#fff" />
+          </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => navigation.navigate('AddDepartment')}
-      >
-        <Icon name="plus" size={24} color="#fff" />
-      </TouchableOpacity>
+          <View style={{ padding: 15, marginBottom: 1 }}>
+            {showProfileCard && (
+              <View style={styles.profileContainer}>
+                {profileImage ? (
+                  <Image source={{ uri: profileImage }} style={styles.avatar} />
+                ) : (
+                  <LottieView
+                    source={require('../../assets/default.json')}
+                    autoPlay
+                    loop
+                    style={styles.animation}
+                  />
+                )}
+                <Text style={styles.greeting}>{currentUserName}</Text>
+                <Text style={styles.roleText}>{currentUserRole}</Text>
+
+                <View style={styles.dropdownRow}>
+                  <Dropdown
+                    style={styles.dropdown}
+                    data={academicYears}
+                    labelField="label"
+                    valueField="value"
+                    value={selectedYear}
+                    placeholder="Select Academic Year"
+                    onChange={item => handleAcademicYearChange(item.value)}
+                  />
+                  <Dropdown
+                    style={styles.dropdown}
+                    data={branches}
+                    labelField="label"
+                    valueField="value"
+                    value={selectedBranch}
+                    placeholder="Select Branch"
+                    onChange={item => handleBranchChange(item.value)}
+                  />
+                </View>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.headerRow}>
+                      <View style={styles.headerLeft}>
+                          <TouchableOpacity onPress={() => navigation.goBack()}>
+                          <Icon name="arrow-back" size={24} color="#2d3e83" />
+                          </TouchableOpacity>
+                          <Icon name="domain" size={24} color="#2d3e83" style={{ marginLeft: 10 }} />
+                          <Text style={styles.headerTitle}>Departments</Text>
+                      </View>
+                        <TouchableOpacity style={styles.createButton} onPress={() => {/* Add create standard logic */}}>
+                          <Icon name="add-circle-outline" size={20} color="#2d3e83" />
+                          <Text style={styles.createText}>Create Department</Text>
+                          </TouchableOpacity>
+            </View>
+
+          <FlatList
+            data={departmentsData}
+            keyExtractor={item => item.id.toString()}
+            renderItem={({ item }) => renderDepartmentCard(item)}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2d3e83']} />
+            }
+            contentContainerStyle={{ padding: 20 }}
+          />
+        </>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2d3e83',
-    marginLeft: 10,
-  },
-  listContainer: { paddingBottom: 80 },
-  itemContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  itemText: { fontSize: 16, color: '#333' },
-  emptyText: { textAlign: 'center', marginTop: 50, fontSize: 16, color: '#888' },
-  addButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: '#2d3e83',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  container: { flex: 1, padding: 15, backgroundColor: '#f4f6f9' },
+  greeting: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  overlayContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
   },
+  overlayText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#fff',
+  },
+  cardContainer: {
+    marginVertical: 8,
+  padding: 12,
+  borderRadius: 10,
+  elevation: 3,
+    backgroundColor: RANDOM_BG_COLORS[Math.floor(Math.random() * RANDOM_BG_COLORS.length)],
+  },
+  profileContainer: {
+    alignItems: 'center',
+    marginBottom: 15,
+    backgroundColor: '#2d3e83',
+    padding: 20,
+    borderRadius: 10,
+},
+avatar: {
+width: 80,
+height: 80,
+borderRadius: 40,
+marginBottom: 12,
+},
+animation: {
+width: 80,
+height: 80,
+marginBottom: 12,
+},
+roleText: {
+color: '#fff',
+marginTop: 3,
+fontSize: 13,
+},
+dropdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 10,
+  },
+dropdown: {
+    width: '48%',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 40,
+  },
+cardTopRow: {
+flexDirection: 'row',
+justifyContent: 'space-between',
+alignItems: 'center',
+},
+cardTitle: {
+fontSize: 18,
+  fontWeight: 'bold',
+  color: '#2d3e83',
+  marginBottom: 8,
+},
+actionButtonsRow: {
+flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginTop: 10,
+},
+actionButton: { backgroundColor: '#2d3e83', padding: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center' },
+actionText: { color: '#fff', marginLeft: 5 },
+cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+
+expandIcon: {
+padding: 4,
+},
+cardMetaRow: {
+marginTop: 10,
+paddingTop: 8,
+borderTopWidth: 1,
+borderTopColor: '#2d3e83',
+},
+iconToggle: {
+position: 'absolute',
+top: 10,
+right: 15,
+zIndex: 999,
+backgroundColor: '#2d3e83',
+padding: 8,
+borderRadius: 20,
+},
+headerRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  paddingHorizontal: 20,
+  paddingBottom: 10,
+},
+headerLeft: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+createButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#e6ecf7',
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  borderRadius: 8,
+},
+createText: {
+  marginLeft: 6,
+  fontSize: 14,
+  color: '#2d3e83',
+  fontWeight: '500',
+},
+expandRow: {
+  flexDirection: 'row',
+  justifyContent: 'flex-end',
+  alignItems: 'center',
+},
+expandedActions: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 10 },
+headerTitle: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  marginLeft: 10,
+  color: '#2d3e83',
+},
 });
 
 export default DepartmentsScreen;

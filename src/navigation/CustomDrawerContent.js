@@ -51,9 +51,8 @@ const CustomDrawerContent = () => {
 
   const renderMenuItem = (item) => {
     const isExpanded = expandedItems[item.label];
-    const showItem = hasPermission(item.permissions);
-
-    if (!showItem) return null;
+    const showItem = item.alwaysShow || hasPermission(item.permissions || []);
+if (!showItem) return null;
 
     return (
       <View key={item.label}>
@@ -82,7 +81,7 @@ const CustomDrawerContent = () => {
         {isExpanded &&
           item.children &&
           item.children.map((child) =>
-            hasPermission(child.permissions) ? (
+            child.alwaysShow || hasPermission(child.permissions || []) ? (
               <TouchableOpacity
                 key={child.label}
                 style={[
@@ -216,13 +215,24 @@ const CustomDrawerContent = () => {
     {
       label: '24/7 Support',
       icon: 'headset',
-      permissions: ['view_support'],
+      alwaysShow: true,
     },
     {
       label: 'User Permissions',
       icon: 'shield-account',
       permissions: ['view_role'],
     },
+    {
+  label: 'Locations',
+  icon: 'currency-usd-off',
+  alwaysShow: true,
+  children: [
+    {
+      label: 'Branches',
+      alwaysShow: true,
+    },
+  ],
+},
   ];
 
   return (

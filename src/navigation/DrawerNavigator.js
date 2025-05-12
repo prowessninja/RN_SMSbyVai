@@ -12,6 +12,8 @@ import DepartmentsScreen from '../screens/DepartmentsScreen';
 import CustomDrawerContent from './CustomDrawerContent';
 import UserPermissionsScreen from '../screens/UserPermissionsScreen';
 import CreateRoleScreen from '../screens/CreateRoleScreen'; // adjust path if needed
+import BrachesScreen from '../screens/BranchesScreen';
+import BranchesScreen from '../screens/BranchesScreen';
 
 
 const Drawer = createDrawerNavigator();
@@ -27,6 +29,7 @@ function UsersStack() {
       <Stack.Screen name="Standards" component={StandardsScreen} />
       <Stack.Screen name="Permissions" component={UserPermissionsScreen} />
       <Stack.Screen name="CreateRole" component={CreateRoleScreen}  options={{ headerShown: true }}/>
+      <Stack.Screen name="Branches" component={BrachesScreen}/>
       
     </Stack.Navigator>
   );
@@ -46,6 +49,7 @@ const MainDrawer = () => {
       <Drawer.Screen name="Departments" component={DepartmentsScreen} />
       <Drawer.Screen name="User Permissions" component={UserPermissionsScreen} />
       <Drawer.Screen name="CreateRole" component={CreateRoleScreen}/>
+      <Drawer.Screen name="Branches" component={BranchesScreen}/>
     </Drawer.Navigator>
   );
 };
