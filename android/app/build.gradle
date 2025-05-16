@@ -4,7 +4,7 @@ apply plugin: "com.facebook.react"
 import com.android.build.OutputFile
 
 react {
-    /* Customize if needed */
+    // Customize if needed
 }
 
 def enableSeparateBuildPerCPUArchitecture = false
@@ -77,7 +77,6 @@ android {
                         defaultConfig.versionCode * 1000 + versionCodes.get(abi)
             }
 
-            // 👇 Custom APK name format
             def appName = "SMS"
             def buildType = variant.buildType.name
             def versionName = variant.versionName
@@ -99,6 +98,7 @@ dependencies {
     }
     debugImplementation("com.facebook.flipper:flipper-fresco-plugin:${FLIPPER_VERSION}")
 
+    // Hermes disabled → use JSC
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
