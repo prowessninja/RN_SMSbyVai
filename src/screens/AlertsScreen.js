@@ -23,7 +23,7 @@ const AlertsScreen = () => {
       {/* Animation & Text */}
       <View style={styles.content}>
         <LottieView
-          source={require('../../assets/animations/no-internet.json')} // 👈 Add your Lottie file here
+          source={require('../../assets/animations/no-alerts.json')} // 👈 Add your Lottie file here
           autoPlay
           loop
           style={styles.lottie}

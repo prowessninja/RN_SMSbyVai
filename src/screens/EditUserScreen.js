@@ -6,6 +6,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AuthContext } from '../context/AuthContext';
 import Icon from 'react-native-vector-icons/Ionicons';
+import Eyecon from 'react-native-vector-icons/FontAwesome5';
 import { fetchUserDetails, updateUserDetails } from '../api/userdetails';
 import { launchImageLibrary } from 'react-native-image-picker';
 
@@ -105,7 +106,7 @@ export default function EditUserScreen({ route, navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="arrow-back" size={24} color="#007AFF" />
         </TouchableOpacity>
-        <Icon name="account-edit" size={24} color="#007AFF" style={{ marginLeft: 10 }} />
+        <Eyecon name="user-edit" size={20} color="#007AFF" style={{ marginLeft: 10 }} />
         <Text style={styles.headerTitle}>{isStudent ? 'Edit Student Details' : 'Edit Employee Details'}</Text>
       </View>
 

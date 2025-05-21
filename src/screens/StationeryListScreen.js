@@ -13,6 +13,7 @@ import {
   UIManager,
   Platform,
   FlatList,
+  TextInput,
 } from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -20,7 +21,11 @@ import Eyecon from 'react-native-vector-icons/FontAwesome';
 import CommonAPI from '../api/common';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LottieView from 'lottie-react-native';
+import MultiSelect from 'react-native-multiple-select';
 import { useNavigation } from '@react-navigation/native';
+import CheckBox from '@react-native-community/checkbox';
+import UnifiedStationeryModal from '../components/UnifiedStationeryModal';
+
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -29,6 +34,7 @@ if (Platform.OS === 'android') {
 const RANDOM_BG_COLORS = ['#ffe0b2', '#dcedc8', '#b3e5fc', '#f8bbd0'];
 
 const StationeryListScreen = () => {
+  // Core state
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
@@ -44,6 +50,42 @@ const StationeryListScreen = () => {
   const [overlayText, setOverlayText] = useState('');
   const [showProfileCard, setShowProfileCard] = useState(true);
 
+  const [modalVisible, setModalVisible] = useState(false);
+const [isEditMode, setIsEditMode] = useState(false);
+const [formData, setFormData] = useState({
+  id: null,
+  name: '',
+  selectedType: null,
+  selectedInventory: null,
+  price: '',
+  quantity: '',
+  description: '',
+  isActive: true,
+});
+
+
+  // Add‑item modal
+  const [addItemModalVisible, setAddItemModalVisible] = useState(false);
+  const [allStationery, setAllStationery] = useState([]);
+  const [selectedStationery, setSelectedStationery] = useState([]);
+  const [selectedStandard, setSelectedStandard] = useState(null);
+  const [modalLoading, setModalLoading] = useState(false);
+
+  // Edit‑item modal
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [stationaryTypes, setStationaryTypes] = useState([]);
+  const [inventoryTracking, setInventoryTracking] = useState([]);
+  const [editItemData, setEditItemData] = useState({
+    id: null,
+    name: '',
+    selectedType: null,
+    selectedInventory: null,
+    price: '',
+    quantity: '',
+    description: '',
+    isActive: false,
+  });
+
   const navigation = useNavigation();
 
   useEffect(() => {
@@ -57,24 +99,23 @@ const StationeryListScreen = () => {
         CommonAPI.fetchAcademicYears(),
         CommonAPI.fetchCurrentUserInfo(),
       ]);
-
       const branchesData = branchRes.data?.results || [];
       const academicYearsData = yearRes.data?.results || [];
 
-      setBranches(branchesData.map(branch => ({ label: branch.name, value: branch.id })));
-      setAcademicYears(academicYearsData.map(year => ({ label: year.name, value: year.id })));
+      setBranches(branchesData.map(b => ({ label: b.name, value: b.id })));
+      setAcademicYears(academicYearsData.map(y => ({ label: y.name, value: y.id })));
 
-      const userData = userRes.data;
-      setCurrentUserName(userData.first_name || 'User');
-      setCurrentUserRole(userData.group?.name || 'Role');
-      setProfileImage(userData.profile_image);
+      const u = userRes.data;
+      setCurrentUserName(u.first_name || 'User');
+      setCurrentUserRole(u.group?.name || 'Role');
+      setProfileImage(u.profile_image);
 
-      if (branchesData.length > 0) setSelectedBranch(branchesData[0].id);
-      if (academicYearsData.length > 0) setSelectedYear(academicYearsData[0].id);
+      if (branchesData.length) setSelectedBranch(branchesData[0].id);
+      if (academicYearsData.length) setSelectedYear(academicYearsData[0].id);
 
-      fetchStationeryData(academicYearsData[0].id, branchesData[0].id);
-    } catch (error) {
-      console.error('Error fetching metadata:', error);
+      await fetchStationeryData(academicYearsData[0].id, branchesData[0].id);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -82,85 +123,172 @@ const StationeryListScreen = () => {
 
   const fetchStationeryData = async (yearId, branchId) => {
   try {
+    setLoading(true);
     const token = await AsyncStorage.getItem('userToken');
-    const response = await CommonAPI.fetchStandardsForYearBranch(yearId, branchId, token);
-const parsedData = response.results.map(standard => ({
-  id: standard.id,
-  name: standard.name,
-  items: standard.stationary.map((s, index) => ({
-    id: `${standard.id}-${index}`,
-    name: s.name,
-    quantity: s.quantity,
-    price: s.price,
-    type: s.stationary_type?.name || '—',
-  })),
-}));
-setStationeryData(parsedData);
+    const resp = await CommonAPI.fetchStandardsForYearBranch(yearId, branchId, token);
+    const parsed = resp.results.map(std => ({
+      id: std.id,
+      name: std.name,
+      stationary: std.stationary,
+      items: std.stationary.map((s, i) => ({
+        id: `${std.id}-${i}`,
+        name: s.name,
+        quantity: s.quantity,
+        price: s.price,
+        type: s.stationary_type?.name || '—',
+        original: s,
+      })),
+    }));
+    setStationeryData(parsed);
     setExpandedItems({});
-  } catch (error) {
-    console.error('Error fetching stationery data:', error);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
   }
 };
 
-  const handleAcademicYearChange = (yearId) => {
-  setSelectedYear(yearId);
-  if (!selectedBranch) return;
+  const handleAcademicYearChange = y => {
+    setSelectedYear(y);
+    if (!selectedBranch) return;
+    setShowOverlay(true);
+    setOverlayText('Academic Year changed successfully');
+    fetchStationeryData(y, selectedBranch);
+    setTimeout(() => setShowOverlay(false), 1000);
+  };
 
-  setShowOverlay(true);
-  setOverlayText('Academic Year changed successfully');
-  fetchStationeryData(yearId, selectedBranch);
-  setTimeout(() => setShowOverlay(false), 1000);
+  const handleBranchChange = b => {
+    setSelectedBranch(b);
+    if (!selectedYear) return;
+    setShowOverlay(true);
+    setOverlayText('Branch changed successfully');
+    fetchStationeryData(selectedYear, b);
+    setTimeout(() => setShowOverlay(false), 1000);
+  };
+
+  const handleAddItem = async standard => {
+    setSelectedStandard(standard);
+    setAddItemModalVisible(true);
+    try {
+      const all = await CommonAPI.fetchAllStationery();
+      setAllStationery(all);
+      setSelectedStationery(standard.stationary.map(s => s.id));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleUpdateStationery = async () => {
+    if (!selectedStandard) return;
+    const payload = {
+      id: selectedStandard.id,
+      name: selectedStandard.name,
+      is_active: selectedStandard.is_active,
+      stationary_ids: selectedStationery,
+      academic_year_id: selectedYear,
+      branch: selectedBranch,
+    };
+    try {
+      await CommonAPI.updateStandard(payload);
+      setAddItemModalVisible(false);
+      setOverlayText('Item updated successfully');
+      setShowOverlay(true);
+      fetchStationeryData(selectedYear, selectedBranch);
+      setTimeout(() => setShowOverlay(false), 1000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // 1️⃣ When opening the Edit modal, seed your form with the real inventory_tracking id:
+// ✅ FIXED handleEditStationery with correct modal + formData usage
+const handleEditStationery = async (row) => {
+  const s = row.original; // this is your stationery item object
+
+  try {
+    const { stationaryTypes, inventoryTracking } =
+      await CommonAPI.fetchStationaryTypesAndInventory(selectedBranch);
+    setStationaryTypes(stationaryTypes);
+    setInventoryTracking(inventoryTracking);
+
+    setFormData({
+      id: s.id,
+      name: s.name,
+      selectedType: s.stationary_type?.id || null,
+      selectedInventory: s.inventory_tracking?.id || null,
+      price: String(s.price),
+      quantity: String(s.quantity),
+      description: s.description || '',
+      isActive: s.is_active,
+    });
+
+    setIsEditMode(true);
+    setModalVisible(true);
+  } catch (err) {
+    console.error(err);
+    setOverlayText('Could not load edit form');
+    setShowOverlay(true);
+    setTimeout(() => setShowOverlay(false), 1000);
+  }
 };
 
-  const handleBranchChange = (branchId) => {
-  setSelectedBranch(branchId);
-  if (!selectedYear) return;
+const handleSubmitStationery = async () => {
+  const isEditing = isEditMode && formData.id;
+  const payload = {
+    name: formData.name,
+    description: formData.description,
+    quantity: Number(formData.quantity),
+    stationary_type_id: formData.selectedType,
+    inventory_tracking_id: formData.selectedInventory,
+    price: Number(formData.price),
+    is_active: formData.isActive,
+    branch_id: selectedBranch,
+  };
 
-  setShowOverlay(true);
-  setOverlayText('Branch changed successfully');
-  fetchStationeryData(selectedYear, branchId);
-  setTimeout(() => setShowOverlay(false), 1000);
+  try {
+    setModalLoading(true);
+    setModalLoading(true);
+    if (isEditing) {
+      await CommonAPI.updateStationery(formData.id, payload);
+    } else {
+      await CommonAPI.createStationery(payload);
+    }
+    setModalLoading(false);
+    setModalVisible(false);
+    await fetchStationeryData(selectedYear, selectedBranch);
+  } catch (err) {
+    console.error(err);
+    setOverlayText('Something went wrong');
+    setShowOverlay(true);
+  } finally {
+    setModalLoading(false);
+    setTimeout(() => setShowOverlay(false), 1200);
+  }
 };
-
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchStationeryData(selectedYear, selectedBranch).finally(() => setRefreshing(false));
   }, [selectedYear, selectedBranch]);
 
-  const handleItemPress = (itemId) => {
+  const handleItemPress = id => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedItems(prev => ({ ...prev, [itemId]: !prev[itemId] }));
+    setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const renderItemGroup = ({ item }) => {
-  const backgroundColor = RANDOM_BG_COLORS[item.id % RANDOM_BG_COLORS.length];
-  const isExpanded = expandedItems[item.id];
-
+  if (loading) {
   return (
-    <View style={[styles.cardContainer, { backgroundColor }]}>
-      <TouchableOpacity onPress={() => handleItemPress(item.id)} style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{item.stationery_type.name}</Text>
-        <Icon name={isExpanded ? 'expand-less' : 'expand-more'} size={24} color="#2d3e83" />
-      </TouchableOpacity>
-
-      {isExpanded && item.items?.map(subItem => (
-        <View key={subItem.id} style={styles.tableRow}>
-          <Text style={styles.tableCell}>{subItem.name}</Text>
-          <Text style={styles.tableCell}>{subItem.quantity}</Text>
-          <Text style={styles.tableCell}>{subItem.price || '—'}</Text>
-          <TouchableOpacity style={styles.editButton}>
-            <Icon name="edit" size={18} color="#2d3e83" />
-          </TouchableOpacity>
-        </View>
-      ))}
+    <View style={styles.centered}>
+      <ActivityIndicator size="large" color="#2d3e83" />
+      <Text style={{ marginTop: 12, fontSize: 16, color: '#2d3e83' }}>
+        Loading stationery... Please hold tight!
+      </Text>
     </View>
   );
-};
-
-
+}
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.container}>
+      {/* Overlay */}
       <Modal visible={showOverlay} transparent animationType="fade">
         <View style={styles.overlayContainer}>
           <ActivityIndicator size="large" color="#fff" />
@@ -168,120 +296,286 @@ setStationeryData(parsedData);
         </View>
       </Modal>
 
-      {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#2d3e83" />
-        </View>
-      ) : (
-        <>
-          <TouchableOpacity onPress={() => setShowProfileCard(prev => !prev)} style={styles.iconToggle}>
-            <Eyecon name={showProfileCard ? 'eye-slash' : 'eye'} size={15} color="#fff" />
-          </TouchableOpacity>
+      {/* Add Item Modal */}
+      <Modal
+        visible={addItemModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAddItemModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Add Item</Text>
 
-          <View style={{ padding: 15, marginBottom: 1 }}>
-            {showProfileCard && (
-              <View style={styles.profileContainer}>
-                {profileImage ? (
-                  <Image source={{ uri: profileImage }} style={styles.avatar} />
-                ) : (
-                  <LottieView
-                    source={require('../../assets/default.json')}
-                    autoPlay
-                    loop
-                    style={styles.animation}
-                  />
-                )}
-                <Text style={styles.greeting}>{currentUserName}</Text>
-                <Text style={styles.roleText}>{currentUserRole}</Text>
+            <Text style={styles.label}>Branch</Text>
+            <Text style={styles.readOnly}>
+              {branches.find(b => b.value === selectedBranch)?.label}
+            </Text>
 
-                <View style={styles.dropdownRow}>
-                  <Dropdown
-                    style={styles.dropdown}
-                    data={academicYears}
-                    labelField="label"
-                    valueField="value"
-                    value={selectedYear}
-                    placeholder="Select Academic Year"
-                    onChange={item => handleAcademicYearChange(item.value)}
-                  />
-                  <Dropdown
-                    style={styles.dropdown}
-                    data={branches}
-                    labelField="label"
-                    valueField="value"
-                    value={selectedBranch}
-                    placeholder="Select Branch"
-                    onChange={item => handleBranchChange(item.value)}
-                  />
-                </View>
-              </View>
-            )}
-          </View>
+            <Text style={styles.label}>Standard Name</Text>
+            <Text style={styles.readOnly}>{selectedStandard?.name}</Text>
 
-          <View style={styles.headerRow}>
-            <View style={styles.headerLeft}>
-              <TouchableOpacity onPress={() => navigation.goBack()}>
-                <Icon name="arrow-back" size={24} color="#2d3e83" />
+            <Text style={styles.label}>Stationery</Text>
+            <MultiSelect
+              items={allStationery}
+              uniqueKey="id"
+              onSelectedItemsChange={setSelectedStationery}
+              selectedItems={selectedStationery}
+              selectText="Select Stationery"
+              searchInputPlaceholderText="Search..."
+              displayKey="name"
+              submitButtonColor="#2d3e83"
+              submitButtonText="Done"
+              styleMainWrapper={styles.multiSelect}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setAddItemModalVisible(false)}
+              >
+                <Text style={styles.btnText}>Cancel</Text>
               </TouchableOpacity>
-              <Icon name="inventory" size={24} color="#2d3e83" style={{ marginLeft: 10 }} />
-              <Text style={styles.headerTitle}>Stationery</Text>
+              <TouchableOpacity
+                style={styles.submitBtn}
+                onPress={handleUpdateStationery}
+              >
+                <Text style={styles.btnText}>Submit</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.createButton}>
-              <Icon name="add-circle-outline" size={20} color="#2d3e83" />
-              <Text style={styles.createText}>Add Item</Text>
-            </TouchableOpacity>
           </View>
-        
-          <FlatList
-                data={stationeryData}
-                keyExtractor={(item) => item.id.toString()}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2d3e83']} />
-  }
-  contentContainerStyle={{ padding: 20 }}
-  renderItem={({ item }) => (
-    <View style={styles.classCard}>
-  <TouchableOpacity
-    style={styles.classHeader}
-    onPress={() => handleItemPress(item.id)}
-  >
-    <Text style={styles.classTitle}> <Text style={styles.className}>{item.name}</Text></Text>
-    <Icon
-      name={expandedItems[item.id] ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-      size={24}
-      color="#2d3e83"
-    />
-  </TouchableOpacity>
-
-  {expandedItems[item.id] && (
-    <View style={styles.tableContainer}>
-      <View style={styles.tableHeader}>
-        <Text style={[styles.cell, styles.headerCell]}>Title</Text>
-        <Text style={[styles.cell, styles.headerCell]}>Quantity</Text>
-        <Text style={[styles.cell, styles.headerCell]}>Amount</Text>
-        <TouchableOpacity style={styles.addButton}>
-          <Text style={styles.addButtonText}>Add item</Text>
-        </TouchableOpacity>
-      </View>
-
-      {item.items?.map((row, index) => (
-        <View key={row.id} style={styles.tableRow}>
-            <Text style={styles.cell}>{index + 1}</Text>
-            <Text style={styles.cell}>{row.name} ({row.type})</Text>
-            <Text style={styles.cell}>{row.quantity}</Text>
-            <Text style={styles.cell}>{row.price}</Text>
-          <TouchableOpacity style={styles.editIconWrapper}>
-            <Icon name="edit" size={18} color="#2d3e83" />
-          </TouchableOpacity>
         </View>
-      ))}
-    </View>
-  )}
-</View>
-  )}
+      </Modal>
+
+      {/* Edit Item Modal */}
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Stationery</Text>
+
+            <Text style={styles.label}>Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter name"
+              value={editItemData.name}
+              onChangeText={name => setEditItemData(d => ({ ...d, name }))}
+            />
+
+            <Text style={styles.label}>Stationery Type</Text>
+            <Dropdown
+              style={styles.dropdown}
+              data={stationaryTypes}
+              labelField="label"
+              valueField="value"
+              placeholder="Select Type"
+              value={editItemData.selectedType}
+              onChange={item => setEditItemData(d => ({ ...d, selectedType: item.value }))}
+            />
+
+            <Text style={styles.label}>Inventory</Text>
+            <Dropdown
+              style={styles.dropdown}
+              data={inventoryTracking}
+              labelField="label"
+              valueField="value"
+              placeholder="Select Inventory"
+              value={editItemData.selectedInventory}
+              onChange={item => setEditItemData(d => ({ ...d, selectedInventory: item.value }))}
+            />
+
+            <Text style={styles.label}>Price</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter price"
+              keyboardType="numeric"
+              value={editItemData.price}
+              onChangeText={price => setEditItemData(d => ({ ...d, price }))}
+            />
+
+            <Text style={styles.label}>Quantity</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter quantity"
+              keyboardType="numeric"
+              value={editItemData.quantity}
+              onChangeText={quantity => setEditItemData(d => ({ ...d, quantity }))}
+            />
+
+            <Text style={styles.label}>Description</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter description"
+              value={editItemData.description}
+              onChangeText={description => setEditItemData(d => ({ ...d, description }))}
+            />
+
+            <View style={styles.checkboxRow}>
+              <CheckBox
+                value={editItemData.isActive}
+                onValueChange={val => setEditItemData(d => ({ ...d, isActive: val }))}
+              />
+              <Text style={styles.label}>Active</Text>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Text style={styles.btnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.submitBtn}
+                onPress={handleSubmitStationery}
+                
+              >
+                <Text style={styles.btnText}>Submit</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <UnifiedStationeryModal
+  visible={modalVisible}
+  onClose={() => setModalVisible(false)}
+  onSubmit={handleSubmitStationery}
+  isEdit={isEditMode}
+  formData={formData}
+  setFormData={setFormData}
+  stationaryTypes={stationaryTypes}
+  inventoryTracking={inventoryTracking}
+  loading={modalLoading} // 🆕 pass loader to modal
 />
 
-        </>
+
+      {/* Profile & Filters */}
+      <TouchableOpacity
+        onPress={() => setShowProfileCard(v => !v)}
+        style={styles.iconToggle}
+      >
+        <Eyecon
+          name={showProfileCard ? 'eye-slash' : 'eye'}
+          size={15}
+          color="#fff"
+        />
+      </TouchableOpacity>
+      <View style={{ padding: 8, marginBottom: 1 }}></View>
+      {showProfileCard && (
+        <View style={styles.profileContainer}>
+          {profileImage ? (
+            <Image source={{ uri: profileImage }} style={styles.avatar} />
+          ) : (
+            <LottieView
+              source={require('../../assets/default.json')}
+              autoPlay
+              loop
+              style={styles.animation}
+            />
+          )}
+          <Text style={styles.greeting}>{currentUserName}</Text>
+          <Text style={styles.roleText}>{currentUserRole}</Text>
+          <View style={styles.dropdownRow}>
+            <Dropdown
+              style={styles.dropdown}
+              data={academicYears}
+              labelField="label"
+              valueField="value"
+              value={selectedYear}
+              placeholder="Select Academic Year"
+              onChange={item => handleAcademicYearChange(item.value)}
+            />
+            <Dropdown
+              style={styles.dropdown}
+              data={branches}
+              labelField="label"
+              valueField="value"
+              value={selectedBranch}
+              placeholder="Select Branch"
+              onChange={item => handleBranchChange(item.value)}
+            />
+          </View>
+        </View>
       )}
+      
+
+      {/* Header */}
+      <View style={styles.headerRow}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Icon name="arrow-back" size={24} color="#2d3e83" />
+          </TouchableOpacity>
+          <Icon name="inventory" size={24} color="#2d3e83" style={{ marginLeft: 10 }} />
+          <Text style={styles.headerTitle}>Stationery</Text>
+        </View>
+        <TouchableOpacity style={styles.createButton} onPress={async () => {
+  const { stationaryTypes, inventoryTracking } = await CommonAPI.fetchStationaryTypesAndInventory(selectedBranch);
+  setStationaryTypes(stationaryTypes);
+  setInventoryTracking(inventoryTracking);
+  setFormData({
+    id: null,
+    name: '',
+    selectedType: null,
+    selectedInventory: null,
+    price: '',
+    quantity: '',
+    description: '',
+    isActive: true,
+  });
+  setIsEditMode(false);
+  setModalVisible(true);
+}}
+>
+                      <Icon name="add-circle-outline" size={20} color="#2d3e83" />
+                      <Text style={styles.createText}>Stationery</Text>
+                    </TouchableOpacity>
+      </View>
+
+      {/* List */}
+      <FlatList
+        data={stationeryData}
+        keyExtractor={item => item.id.toString()}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2d3e83']} />}
+        contentContainerStyle={{ padding: 20 }}
+        renderItem={({ item }) => {
+          const expanded = expandedItems[item.id];
+          return (
+            <View style={[styles.classCard, { backgroundColor: RANDOM_BG_COLORS[item.id % RANDOM_BG_COLORS.length] }]}>
+              <TouchableOpacity style={styles.classHeader} onPress={() => handleItemPress(item.id)}>
+                <Text style={styles.classTitle}>{item.name}</Text>
+                <Icon name={expanded ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={24} color="#2d3e83" />
+              </TouchableOpacity>
+              {expanded && (
+                <View style={styles.tableContainer}>
+                  <View style={styles.tableHeader}>
+                    <Text style={[styles.cell, styles.headerCell]}>Title</Text>
+                    <Text style={[styles.cell, styles.headerCell]}>Quantity</Text>
+                    <Text style={[styles.cell, styles.headerCell]}>Amount</Text>
+                    <TouchableOpacity style={styles.addButton} onPress={() => handleAddItem(item)}>
+                      <Text style={styles.addButtonText}>Add item</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {item.items.map(row => (
+                    <View key={row.id} style={styles.tableRow}>
+                      <Text style={styles.cell}>{row.name} ({row.type})</Text>
+                      <Text style={styles.cell}>{row.quantity}</Text>
+                      <Text style={styles.cell}>{row.price}</Text>
+                      <TouchableOpacity style={styles.editIconWrapper} onPress={() => handleEditStationery(row)}>
+                        <Icon name="edit" size={18} color="#2d3e83" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          );
+        }}
+      />
     </View>
   );
 };
@@ -372,192 +666,234 @@ const styles = StyleSheet.create({
   },
   animation: { height: 80, width: 80, marginBottom: 10 },
   headerRow: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  paddingHorizontal: 20,
-  paddingBottom: 10,
-},
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginLeft: 10,
+    color: '#2d3e83',
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e6ecf7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  createText: {
+    marginLeft: 6,
+    fontSize: 14,
+    color: '#2d3e83',
+    fontWeight: '500',
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  cardMetaRow: {
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#2d3e83',
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    flexShrink: 1,
+    gap: 8,
+  },
+  stdActionBtn: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  expandIcon: {
+    padding: 4,
+    marginLeft: 6,
+  },
+  iconToggle: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#2d3e83',
+    padding: 8,
+    borderRadius: 20,
+    marginRight: 10,
+    marginTop: 10,
+  },
+  tableHeader: {
+    flexDirection: 'row',
 
-headerLeft: {
-  flexDirection: 'row',
-  alignItems: 'center',
-},
+    alignItems: 'center',
 
-headerTitle: {
-  fontSize: 20,
-  fontWeight: 'bold',
-  marginLeft: 10,
-  color: '#2d3e83',
-},
+    backgroundColor: '#f0f4ff',
 
-createButton: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#e6ecf7',
-  paddingHorizontal: 12,
-  paddingVertical: 6,
-  borderRadius: 8,
-},
+    paddingVertical: 10,
 
-createText: {
-  marginLeft: 6,
-  fontSize: 14,
-  color: '#2d3e83',
-  fontWeight: '500',
-},
-cardTopRow: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  marginBottom: 8,
-},
+    paddingHorizontal: 8,
 
-cardMetaRow: {
-marginTop: 10,
-paddingTop: 8,
-borderTopWidth: 1,
-borderTopColor: '#2d3e83',
-},
+    borderRadius: 6,
+  },
+  tableRow: {
+    flexDirection: 'row',
 
-actionButtonsRow: {
-  flexDirection: 'row',
-  flexShrink: 1,
-  gap: 8,
-},
+    alignItems: 'center',
 
-stdActionBtn: {
-  backgroundColor: '#fff',
-  paddingHorizontal: 8,
-  paddingVertical: 4,
-  borderRadius: 6,
-  borderWidth: 1,
-  borderColor: '#ccc',
-},
+    backgroundColor: '#f9f9f9',
 
-expandIcon: {
-  padding: 4,
-  marginLeft: 6,
-},
-iconToggle: {
-  alignSelf: 'flex-end',
-  backgroundColor: '#2d3e83',
-  padding: 8,
-  borderRadius: 20,
-  marginRight: 10,
-  marginTop: 10,
-},
-tableHeader: {
-  flexDirection: 'row',
-  backgroundColor: '#2d3e83',
-  paddingVertical: 10,
-  paddingHorizontal: 15,
-  borderTopLeftRadius: 5,
-  borderTopRightRadius: 5,
-},
-tableRow: {
-  flexDirection: 'row',
-  backgroundColor: '#f0f0f0',
-  paddingVertical: 12,
-  paddingHorizontal: 15,
-  borderBottomWidth: 1,
-  borderBottomColor: '#ccc',
-},
-tableCell: {
-  flex: 1,
-  fontSize: 14,
-  color: '#333',
-},
-headerText: {
-  color: 'white',
-  fontWeight: 'bold',
-},
-editButton: {
-  flex: 1,
-  alignItems: 'center',
-},
-classCard: {
-  backgroundColor: '#fff',
-  borderRadius: 12,
-  padding: 12,
-  marginBottom: 16,
-  elevation: 2,
-},
+    marginTop: 4,
 
-classHeader: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  borderBottomWidth: 1,
-  borderColor: '#ccc',
-  paddingBottom: 8,
-},
+    paddingVertical: 10,
 
-classTitle: {
-  fontSize: 16,
-  fontWeight: 'bold',
-  color: '#2d3e83',
-},
+    paddingHorizontal: 8,
 
-className: {
-  fontWeight: '600',
-  color: '#2d3e83',
-},
-
-tableContainer: {
-  marginTop: 12,
-},
-
-tableHeader: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#f0f4ff',
-  paddingVertical: 10,
-  paddingHorizontal: 8,
-  borderRadius: 6,
-},
-
-tableRow: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#f9f9f9',
-  marginTop: 4,
-  paddingVertical: 10,
-  paddingHorizontal: 8,
-  borderRadius: 6,
-},
-
-cell: {
-  flex: 1,
-  textAlign: 'center',
-  color: '#333',
-  fontSize: 14,
-},
-
-headerCell: {
-  fontWeight: 'bold',
-  color: '#2d3e83',
-},
-
-addButton: {
-  backgroundColor: '#2d3e83',
-  paddingVertical: 6,
-  paddingHorizontal: 12,
-  borderRadius: 6,
-},
-
-addButtonText: {
-  color: '#fff',
-  fontWeight: 'bold',
-  fontSize: 12,
-},
-
-editIconWrapper: {
-  flex: 1,
-  alignItems: 'center',
-},
-
-
+    borderRadius: 6,
+  },
+  tableCell: {
+    flex: 1,
+    fontSize: 14,
+    color: '#333',
+  },
+  headerText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  editButton: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  classCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    elevation: 2,
+  },
+  classHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderColor: '#ccc',
+    paddingBottom: 8,
+  },
+  classTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2d3e83',
+  },
+  className: {
+    fontWeight: '600',
+    color: '#2d3e83',
+  },
+  tableContainer: {
+    marginTop: 12,
+  },
+  cell: {
+    flex: 1,
+    textAlign: 'center',
+    color: '#333',
+    fontSize: 14,
+  },
+  headerCell: {
+    fontWeight: 'bold',
+    color: '#2d3e83',
+  },
+  addButton: {
+    backgroundColor: '#2d3e83',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  editIconWrapper: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  // ---- newly added styles for the modal:
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#f0f0ff',
+    padding: 20,
+    borderRadius: 12,
+    width: '90%',
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  label: {
+    fontWeight: '600',
+    marginTop: 10,
+  },
+  readOnly: {
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 5,
+  },
+  multiSelect: {
+    marginTop: 10,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  cancelBtn: {
+    backgroundColor: '#ccc',
+    padding: 10,
+    borderRadius: 8,
+  },
+  submitBtn: {
+    backgroundColor: '#2d3e83',
+    padding: 10,
+    borderRadius: 8,
+  },
+  btnText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    height: 40,
+    marginTop: 5,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+  },
 });
 
 export default StationeryListScreen;

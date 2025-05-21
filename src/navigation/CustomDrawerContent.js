@@ -1,46 +1,44 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useMemo } from 'react';
 import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   StyleSheet,
-  LayoutAnimation,
-  Platform,
-  UIManager,
   Image,
+  Platform,
 } from 'react-native';
+import Pressable from 'react-native/Libraries/Components/Pressable/Pressable'; // better touchable
+import Animated, { Layout, FadeInDown, FadeOutUp } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AuthContext } from '../context/AuthContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useTheme } from '@react-navigation/native';
 
-if (Platform.OS === 'android') {
-  UIManager.setLayoutAnimationEnabledExperimental &&
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+const AnimatedView = Animated.createAnimatedComponent(View);
 
 const CustomDrawerContent = () => {
   const { user, permissions } = useContext(AuthContext);
   const navigation = useNavigation();
+  const { colors } = useTheme(); // theme colors (for dark mode)
   const [expandedItems, setExpandedItems] = useState({});
   const [selectedRoute, setSelectedRoute] = useState(null);
 
-  const groupedPermissions = {};
-  permissions.forEach((perm) => {
-    groupedPermissions[perm.codename] = true;
-  });
+  const groupedPermissions = useMemo(() => {
+    const perms = {};
+    permissions.forEach((perm) => {
+      perms[perm.codename] = true;
+    });
+    return perms;
+  }, [permissions]);
 
   const toggleExpand = (label) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedItems((prev) => ({
       ...prev,
       [label]: !prev[label],
     }));
   };
 
-  const hasPermission = (requiredPermissions = []) => {
-    return requiredPermissions.some((perm) => groupedPermissions[perm]);
-  };
+  const hasPermission = (requiredPermissions = []) =>
+    requiredPermissions.some((perm) => groupedPermissions[perm]);
 
   const handleNavigate = (label, routeName = null) => {
     setSelectedRoute(label);
@@ -52,49 +50,61 @@ const CustomDrawerContent = () => {
   const renderMenuItem = (item) => {
     const isExpanded = expandedItems[item.label];
     const showItem = item.alwaysShow || hasPermission(item.permissions || []);
-if (!showItem) return null;
+    if (!showItem) return null;
 
     return (
-      <View key={item.label}>
-        <TouchableOpacity
-          style={[
-            styles.menuItem,
-            selectedRoute === item.label && styles.activeMenuItem,
-          ]}
+      <AnimatedView
+        key={item.label}
+        layout={Layout.springify()}
+        entering={FadeInDown.delay(50)}
+        exiting={FadeOutUp}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: selectedRoute === item.label }}
           onPress={() => {
             if (item.children) toggleExpand(item.label);
             else handleNavigate(item.label, item.route || item.label);
           }}
+          style={[
+            styles.menuItem,
+            selectedRoute === item.label && { backgroundColor: colors.primary + '33' },
+          ]}
+          android_ripple={{ color: colors.primary + '44' }}
         >
-          <Icon name={item.icon} size={20} color="#fff" style={{ width: 24 }} />
-          <Text style={styles.menuText}>{item.label}</Text>
+          <Icon name={item.icon} size={22} color={colors.text} style={{ width: 26 }} />
+          <Text style={[styles.menuText, { color: colors.text }]}>{item.label}</Text>
           {item.children && (
             <Icon
               name={isExpanded ? 'chevron-up' : 'chevron-down'}
-              size={18}
-              color="#fff"
+              size={20}
+              color={colors.text}
               style={{ marginLeft: 'auto' }}
             />
           )}
-        </TouchableOpacity>
+        </Pressable>
 
         {isExpanded &&
           item.children &&
           item.children.map((child) =>
             child.alwaysShow || hasPermission(child.permissions || []) ? (
-              <TouchableOpacity
+              <Pressable
                 key={child.label}
+                accessibilityRole="button"
+                onPress={() => handleNavigate(child.label, child.route || child.label)}
                 style={[
                   styles.subMenuItem,
-                  selectedRoute === child.label && styles.activeSubMenuItem,
+                  selectedRoute === child.label && { backgroundColor: colors.primary + '22' },
                 ]}
-                onPress={() => handleNavigate(child.label, child.route || child.label)}
+                android_ripple={{ color: colors.primary + '22' }}
               >
-                <Text style={styles.subMenuText}>• {child.label}</Text>
-              </TouchableOpacity>
+                <Text style={[styles.subMenuText, { color: colors.text }]}>
+                  {`\u2022 ${child.label}`}
+                </Text>
+              </Pressable>
             ) : null
           )}
-      </View>
+      </AnimatedView>
     );
   };
 
@@ -147,6 +157,7 @@ if (!showItem) return null;
       permissions: ['view_stationary'],
       children: [
         { label: 'Stationery List', permissions: ['view_stationary'] },
+        { label: 'Stationery Types', permissions: ['view_stationary'] },
         { label: 'Stationery Fee', permissions: ['view_stationarytype'] },
       ],
     },
@@ -223,47 +234,51 @@ if (!showItem) return null;
       permissions: ['view_role'],
     },
     {
-  label: 'Locations',
-  icon: 'currency-usd-off',
-  alwaysShow: true,
-  children: [
-    {
-      label: 'Branches',
+      label: 'Locations',
+      icon: 'currency-usd-off',
       alwaysShow: true,
+      children: [
+        {
+          label: 'Branches',
+          alwaysShow: true,
+        },
+      ],
     },
-  ],
-},
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView>
         <View style={styles.profileContainer}>
           <Image
-            source={{ uri: user?.profile_image || 'https://via.placeholder.com/80' }}
+            source={{ uri: user?.profile_image || undefined }}
+            defaultSource={require('../../assets/avatar.png')}
             style={styles.avatar}
           />
-          <Text style={styles.nameText}>
+          <Text style={[styles.nameText, { color: colors.text }]}>
             {user?.full_name || user?.username || 'Welcome'}
           </Text>
-          <Text style={styles.roleText}>
+          <Text style={[styles.roleText, { color: colors.text + 'aa' }]}>
             {user?.group?.name || 'No Role'}
           </Text>
-          <TouchableOpacity
-            style={styles.profileButton}
+          <Pressable
             onPress={() => navigation.navigate('ViewProfile')}
+            style={({ pressed }) => [
+              styles.profileButton,
+              { backgroundColor: pressed ? colors.primary + 'cc' : colors.primary },
+            ]}
           >
-            <Text style={styles.profileButtonText}>View Profile</Text>
-          </TouchableOpacity>
+            <Text style={[styles.profileButtonText, { color: '#fff' }]}>View Profile</Text>
+          </Pressable>
         </View>
 
-        <View style={styles.separator} />
+        <View style={[styles.separator, { backgroundColor: colors.border }]} />
 
         {menuItems.map(renderMenuItem)}
       </ScrollView>
 
       <View style={styles.footer}>
-        <Text style={styles.poweredBy}>
+        <Text style={[styles.poweredBy, { color: colors.text + '88' }]}>
           Powered by: VisionariesAI Labs, V.2025.01.0001
         </Text>
       </View>
@@ -271,80 +286,74 @@ if (!showItem) return null;
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#2d3e83', paddingTop: 40 },
-  profileContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-    paddingHorizontal: 16,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#ccc',
-  },
-  nameText: {
-    fontSize: 18,
-    color: '#fff',
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
-  roleText: {
-    fontSize: 14,
-    color: '#ccc',
-    marginBottom: 6,
-  },
-  profileButton: {
-    backgroundColor: '#4455aa',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginTop: 6,
-  },
-  profileButtonText: {
-    color: '#fff',
-    fontSize: 14,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#555',
-    marginVertical: 10,
-    marginHorizontal: 16,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  activeMenuItem: {
-    backgroundColor: '#4455aa',
-    borderRadius: 8,
-  },
-  menuText: { color: '#fff', fontSize: 16, marginLeft: 10 },
-  subMenuItem: {
-    paddingLeft: 50,
-    paddingVertical: 8,
-  },
-  activeSubMenuItem: {
-    backgroundColor: '#3c4b9a',
-    borderRadius: 8,
-  },
-  subMenuText: {
-    color: '#ccc',
-    fontSize: 14,
-  },
-  footer: {
-    borderTopWidth: 1,
-    borderTopColor: '#444',
-    padding: 16,
-  },
-  poweredBy: {
-    color: '#bbb',
-    fontSize: 12,
-    textAlign: 'center',
-  },
+const styles =
+StyleSheet.create({
+container: { flex: 1, paddingTop: 40 },
+profileContainer: {
+alignItems: 'center',
+marginBottom: 20,
+paddingHorizontal: 16,
+},
+avatar: {
+width: 80,
+height: 80,
+borderRadius: 40,
+backgroundColor: '#ccc',
+},
+nameText: {
+fontSize: 18,
+fontWeight: '700',
+marginTop: 10,
+},
+roleText: {
+fontSize: 14,
+marginBottom: 6,
+},
+profileButton: {
+paddingHorizontal: 16,
+paddingVertical: 6,
+borderRadius: 8,
+},
+profileButtonText: {
+fontSize: 14,
+fontWeight: '600',
+},
+separator: {
+height: 1,
+marginVertical: 10,
+marginHorizontal: 16,
+},
+menuItem: {
+flexDirection: 'row',
+alignItems: 'center',
+paddingHorizontal: 16,
+paddingVertical: 14,
+borderRadius: 8,
+marginHorizontal: 10,
+marginVertical: 4,
+},
+menuText: {
+fontSize: 16,
+marginLeft: 10,
+},
+subMenuItem: {
+paddingLeft: 50,
+paddingVertical: 10,
+marginHorizontal: 10,
+borderRadius: 6,
+},
+subMenuText: {
+fontSize: 14,
+},
+footer: {
+borderTopWidth: 1,
+padding: 16,
+alignItems: 'center',
+},
+poweredBy: {
+fontSize: 12,
+textAlign: 'center',
+},
 });
 
 export default CustomDrawerContent;

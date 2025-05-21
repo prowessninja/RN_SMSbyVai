@@ -14,6 +14,8 @@ import {
   FlatList,
   ScrollView,
   TextInput,
+  Alert,
+  Vibration,
 } from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -23,8 +25,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { addDepartment } from '../api/common';
-import {assignTeachersToDepartment} from '../api/common';
-import {markDepartmentInactive} from '../api/common';
+import { assignTeachersToDepartment } from '../api/common';
+import { markDepartmentInactive } from '../api/common';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -83,7 +85,7 @@ const DepartmentsScreen = () => {
       if (branchesData.length > 0) setSelectedBranch(branchesData[0].id);
       if (academicYearsData.length > 0) setSelectedYear(academicYearsData[0].id);
 
-      fetchDepartmentsData(academicYearsData[0].id, branchesData[0].id);
+      await fetchDepartmentsData(academicYearsData[0].id, branchesData[0].id);
     } catch (error) {
       console.error('Error fetching metadata:', error);
     } finally {
@@ -92,13 +94,16 @@ const DepartmentsScreen = () => {
   };
 
   const fetchDepartmentsData = async (yearId, branchId) => {
-    try {
-      const departmentsRes = await CommonAPI.getDepartmentsForBranchAndYear(branchId, yearId);
-      setDepartmentsData(departmentsRes.results || []);
-    } catch (error) {
-      console.error('Error fetching departments data:', error);
-    }
-  };
+  try {
+    setLoading(true);
+    const departmentsRes = await CommonAPI.getDepartmentsForBranchAndYear(branchId, yearId);
+    setDepartmentsData(departmentsRes.results || []);
+  } catch (error) {
+    console.error('Error fetching departments data:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
 
   const handleAcademicYearChange = (yearId) => {
@@ -186,76 +191,76 @@ const DepartmentsScreen = () => {
   };
 
   const handleAssignTeacher = async (department) => {
-  try {
-    setOverlayText('Loading teachers...');
-    setShowOverlay(true);
+    try {
+      setOverlayText('Loading teachers...');
+      setShowOverlay(true);
 
-    setSelectedDepartment(department);
+      setSelectedDepartment(department);
 
-    const teachers = await CommonAPI.getAllNonStudentUsers(selectedBranch, selectedYear);
+      const teachers = await CommonAPI.getAllNonStudentUsers(selectedBranch, selectedYear);
 
-    console.log('📋 Full Teachers JSON:', JSON.stringify(teachers, null, 2));
-    console.log('✅ Total Teachers Fetched:', teachers?.length || 0);
+      console.log('📋 Full Teachers JSON:', JSON.stringify(teachers, null, 2));
+      console.log('✅ Total Teachers Fetched:', teachers?.length || 0);
 
-    setAvailableTeachers(teachers || []);
-    setAssignModalVisible(true);
-  } catch (error) {
-    console.error('❌ Error fetching teachers:', error);
-    setOverlayText('Failed to load teachers');
-  } finally {
-    setTimeout(() => setShowOverlay(false), 1500);
-  }
-};
+      setAvailableTeachers(teachers || []);
+      setAssignModalVisible(true);
+    } catch (error) {
+      console.error('❌ Error fetching teachers:', error);
+      setOverlayText('Failed to load teachers');
+    } finally {
+      setTimeout(() => setShowOverlay(false), 1500);
+    }
+  };
 
-const handleAssignTeachersSubmit = async () => {
-  if (!selectedDepartment || selectedTeachers.length === 0) {
-    setOverlayText('Please select at least one teacher');
-    setShowOverlay(true);
-    setTimeout(() => setShowOverlay(false), 1500);
-    return;
-  }
+  const handleAssignTeachersSubmit = async () => {
+    if (!selectedDepartment || selectedTeachers.length === 0) {
+      setOverlayText('Please select at least one teacher');
+      setShowOverlay(true);
+      setTimeout(() => setShowOverlay(false), 1500);
+      return;
+    }
 
-  try {
-    setOverlayText('Assigning teachers...');
-    setShowOverlay(true);
+    try {
+      setOverlayText('Assigning teachers...');
+      setShowOverlay(true);
 
-    const payload = {
-      teachers: selectedTeachers,
-    };
+      const payload = {
+        teachers: selectedTeachers,
+      };
 
-    const response = await assignTeachersToDepartment(selectedDepartment.id, payload);
+      const response = await assignTeachersToDepartment(selectedDepartment.id, payload);
 
-    console.log('✅ Teachers assigned successfully:', response);
+      console.log('✅ Teachers assigned successfully:', response);
 
-    setOverlayText('Teachers assigned successfully!');
-    setAssignModalVisible(false);
-    setSelectedTeachers([]);
-    // Optionally refresh departments if needed:
-    fetchDepartmentsData(selectedYear, selectedBranch);
-  } catch (error) {
-    setOverlayText('Failed to assign teachers');
-    console.error('❌ Error assigning teachers:', error);
-  } finally {
-    setTimeout(() => setShowOverlay(false), 1500);
-  }
-};
+      setOverlayText('Teachers assigned successfully!');
+      setAssignModalVisible(false);
+      setSelectedTeachers([]);
+      // Optionally refresh departments if needed:
+      fetchDepartmentsData(selectedYear, selectedBranch);
+    } catch (error) {
+      setOverlayText('Failed to assign teachers');
+      console.error('❌ Error assigning teachers:', error);
+    } finally {
+      setTimeout(() => setShowOverlay(false), 1500);
+    }
+  };
 
-const handleMarkInactive = async (departmentId) => {
-  try {
-    setOverlayText('Marking department inactive...');
-    setShowOverlay(true);
+  const handleMarkInactive = async (departmentId) => {
+    try {
+      setOverlayText('Marking department inactive...');
+      setShowOverlay(true);
 
-    await markDepartmentInactive(departmentId);
+      await markDepartmentInactive(departmentId);
 
-    setOverlayText('Department marked as inactive.');
-    fetchDepartmentsData(selectedYear, selectedBranch);
-  } catch (error) {
-    console.error('❌ Failed to mark department inactive:', error);
-    setOverlayText('Failed to mark as inactive.');
-  } finally {
-    setTimeout(() => setShowOverlay(false), 1500);
-  }
-};
+      setOverlayText('Department marked as inactive.');
+      fetchDepartmentsData(selectedYear, selectedBranch);
+    } catch (error) {
+      console.error('❌ Failed to mark department inactive:', error);
+      setOverlayText('Failed to mark as inactive.');
+    } finally {
+      setTimeout(() => setShowOverlay(false), 1500);
+    }
+  };
 
 
 
@@ -285,16 +290,35 @@ const handleMarkInactive = async (departmentId) => {
           <View style={styles.expandedActions}>
             <TouchableOpacity style={styles.actionButton} onPress={() => handleViewDepartment(department.id)}>
               <Eyecon name="eye" size={16} color="#fff" />
-              <Text style={styles.actionText}>View</Text>
+
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}onPress={() => handleAssignTeacher(department)}>
+            <TouchableOpacity style={styles.actionButton} onPress={() => handleAssignTeacher(department)}>
               <Icon name="person-add" size={16} color="#fff" />
-              <Text style={styles.actionText}>Assign Teacher</Text>
+
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={() => handleMarkInactive(department.id)}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => {
+                Vibration.vibrate([0, 200, 100, 200, 100, 300]);// Vibrate before showing the alert
+                Alert.alert(
+                  'Confirm',
+                  'Are you sure you want to mark this department as inactive?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Confirm',
+                      onPress: () => {
+                        handleMarkInactive(department.id);
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
               <Icon name="block" size={16} color="#fff" />
-              <Text style={styles.actionText}>Mark Inactive</Text>
             </TouchableOpacity>
+
+
           </View>
         )}
       </View>
@@ -354,68 +378,69 @@ const handleMarkInactive = async (departmentId) => {
       </Modal>
 
       <Modal visible={assignModalVisible} transparent animationType="slide">
-  <View style={styles.modalBackdrop}>
-    <View style={styles.modalContainer}>
-      <Text style={styles.modalTitle}>Select Teacher(s) to Assign</Text>
-      <ScrollView style={{ maxHeight: 400 }}>
-        {availableTeachers.length === 0 ? (
-          <Text style={{ textAlign: 'center', color: '#666' }}>No teachers available</Text>
-        ) : (
-          availableTeachers.map((teacher) => {
-            const isSelected = selectedTeachers.includes(teacher.id);
-            return (
-              <TouchableOpacity
-                key={teacher.id}
-                onPress={() => {
-                  setSelectedTeachers(prev =>
-                    isSelected ? prev.filter(id => id !== teacher.id) : [...prev, teacher.id]
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Select Teacher(s) to Assign</Text>
+            <ScrollView style={{ maxHeight: 400 }}>
+              {availableTeachers.length === 0 ? (
+                <Text style={{ textAlign: 'center', color: '#666' }}>No teachers available</Text>
+              ) : (
+                availableTeachers.map((teacher) => {
+                  const isSelected = selectedTeachers.includes(teacher.id);
+                  return (
+                    <TouchableOpacity
+                      key={teacher.id}
+                      onPress={() => {
+                        setSelectedTeachers(prev =>
+                          isSelected ? prev.filter(id => id !== teacher.id) : [...prev, teacher.id]
+                        );
+                      }}
+                      style={[
+                        styles.teacherCard,
+                        { backgroundColor: isSelected ? '#d0e8ff' : '#f4f4f4' },
+                      ]}
+                    >
+                      <Text style={styles.memberText}>
+                        Name: {teacher.first_name || ''} {teacher.last_name || ''}
+                      </Text>
+                      <Text style={styles.memberText}>Employee ID: {teacher.employee_id || 'N/A'}</Text>
+                      <Text style={styles.memberText}>City: {teacher.address?.city || 'N/A'}</Text>
+                      <Text style={styles.memberText}>Phone: {teacher.phone || 'N/A'}</Text>
+                      <Text style={styles.memberText}>Email: {teacher.email || 'N/A'}</Text>
+                      <Text style={styles.memberText}>Department: {teacher.department?.name || 'N/A'}</Text>
+                    </TouchableOpacity>
                   );
-                }}
-                style={[
-                  styles.teacherCard,
-                  { backgroundColor: isSelected ? '#d0e8ff' : '#f4f4f4' },
-                ]}
-              >
-                <Text style={styles.memberText}>
-                  Name: {teacher.first_name || ''} {teacher.last_name || ''}
-                </Text>
-                <Text style={styles.memberText}>Employee ID: {teacher.employee_id || 'N/A'}</Text>
-                <Text style={styles.memberText}>City: {teacher.address?.city || 'N/A'}</Text>
-                <Text style={styles.memberText}>Phone: {teacher.phone || 'N/A'}</Text>
-                <Text style={styles.memberText}>Email: {teacher.email || 'N/A'}</Text>
-                <Text style={styles.memberText}>Department: {teacher.department?.name || 'N/A'}</Text>
-              </TouchableOpacity>
-            );
-          })
-        )}
-      </ScrollView>
+                })
+              )}
+            </ScrollView>
 
-      <View style={styles.modalActions}>
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={() => {
-            setAssignModalVisible(false);
-            setSelectedTeachers([]);
-          }}
-        >
-          <Text style={styles.buttonText}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.submitButton}
-          onPress={() => handleAssignTeachersSubmit()}
-        >
-          <Text style={styles.buttonText}>Assign</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </View>
-</Modal>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => {
+                  setAssignModalVisible(false);
+                  setSelectedTeachers([]);
+                }}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.submitButton}
+                onPress={() => handleAssignTeachersSubmit()}
+              >
+                <Text style={styles.buttonText}>Assign</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
 
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#2d3e83" />
+          <Text style={{ marginTop: 12, fontSize: 16, color: '#2d3e83' }}>Loading departments... hang tight!</Text>
         </View>
       ) : (
         <>
@@ -473,7 +498,7 @@ const handleMarkInactive = async (departmentId) => {
             </View>
             <TouchableOpacity style={styles.createButton} onPress={() => setShowCreateModal(true)}>
               <Icon name="add-circle-outline" size={20} color="#2d3e83" />
-              <Text style={styles.createText}>Create Department</Text>
+              <Text style={styles.createText}>Department</Text>
             </TouchableOpacity>
           </View>
 
@@ -681,12 +706,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   teacherCard: {
-  padding: 12,
-  marginBottom: 10,
-  borderRadius: 10,
-  borderWidth: 1,
-  borderColor: '#ccc',
-},
+    padding: 12,
+    marginBottom: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
 });
 
 export default DepartmentsScreen;

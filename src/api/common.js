@@ -702,6 +702,182 @@ export const markDepartmentInactive = async (departmentId) => {
   }
 };
 
+export const fetchStationaryTypesAndInventory = async (branchId) => {
+  console.log('[fetchStationaryTypesAndInventory] Called with branchId:', branchId);
+
+  if (!branchId) {
+    console.error('[fetchStationaryTypesAndInventory] Missing branchId');
+    throw new Error('branchId is required to fetch inventory and stationery types.');
+  }
+
+  try {
+    console.log('[fetchStationaryTypesAndInventory] Fetching data…');
+
+    const [typesRes, invRes] = await Promise.all([
+      api.get('stationary-types/', {
+        params: { omit: 'modified_by,created_by' },
+      }),
+      api.get('inventory-tracking/', {
+        params: {
+          branch: branchId,
+          inventory__is_stationary: true,
+          omit: 'created_by,modified_by,branch',
+        },
+      }),
+    ]);
+
+    console.log('[fetchStationaryTypesAndInventory] Raw types:', typesRes.data);
+    console.log('[fetchStationaryTypesAndInventory] Raw inventory:', invRes.data);
+
+    const stationaryTypes = (typesRes.data.results || []).map(t => ({
+      label: t.name,
+      value: t.id,
+    }));
+
+    // Each inventory‑tracking entry has an `inventory` object describing the item
+    const inventoryTracking = (invRes.data.results || []).map(entry => ({
+      label: entry.inventory.name + ` (avail: ${entry.inventory.quantity})`,
+      value: entry.inventory.id,
+      price: entry.inventory.price,
+      stock: entry.inventory.quantity,
+    }));
+
+    return { stationaryTypes, inventoryTracking };
+  } catch (error) {
+    console.error(
+      '[fetchStationaryTypesAndInventory] Error occurred:',
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+
+export const updateStationery = async (stationeryId, data) => {
+  try {
+    const payload = {
+      id: stationeryId,
+      name: data.name,
+      description: data.description,
+      quantity: data.quantity,
+      stationary_type_id: data.stationary_type_id,
+      inventory_tracking_id: data.inventory_tracking_id,
+      price: data.price,
+      is_active: data.is_active,
+      branch_id: data.branch_id,
+    };
+
+    console.log('[updateStationeryItem] Payload:', payload);
+
+    const response = await api.patch(`stationary/${stationeryId}/`, payload);
+    console.log(
+      `[updateStationeryItem] Stationery ${stationeryId} updated successfully:`,
+      response.data
+    );
+    return response.data;
+  } catch (error) {
+    console.error(
+      `[updateStationeryItem] Error updating stationery ${stationeryId}:`,
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+
+export const saveAcademicYear = async (year) => {
+  // build the body
+  const body = {
+    name:       year.name,
+    start_date: year.start_date,
+    end_date:   year.end_date,
+  };
+
+  try {
+    let response;
+    if (year.id) {
+      console.log('[saveAcademicYear] Updating Academic Year:', year.id, body);
+      response = await api.patch(`academic-years/${year.id}/`, { id: year.id, ...body });
+    } else {
+      console.log('[saveAcademicYear] Creating Academic Year:', body);
+      response = await api.post('academic-years/', body);
+    }
+    console.log('[saveAcademicYear] Success:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error(
+      `[saveAcademicYear] Error ${year.id ? 'updating' : 'creating'} academic year:`,
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+
+export const sendForgotPasswordLink = async (email) => {
+  try {
+    const response = await api.post('users/forgot-password/', { email });
+    return response.data;
+  } catch (error) {
+    console.error('[sendForgotPasswordLink] Error:', error.response?.data || error.message);
+    throw error.response?.data || { message: 'Something went wrong while sending the reset link.' };
+  }
+};
+
+export const createStationery = async (data) => {
+  try {
+    const response = await api.post('stationary/', data);
+    return response.data;
+  } catch (error) {
+    console.error('[createStationery] Error:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const fetchStationeryTypes = async () => {
+  try {
+    const response = await api.get('stationary-types/', {
+      params: {
+        is_active: true,
+        omit: 'modified_by,created_by',
+      },
+    });
+    return response.data.results || [];
+  } catch (error) {
+    console.error('Error fetching stationery types:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const createStationeryType = async (payload) => {
+  try {
+    const response = await api.post('stationary-types/', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating stationery type:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const updateStationeryType = async (id, payload) => {
+  try {
+    const response = await api.patch(`stationary-types/${id}/`, payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating stationery type:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const deleteStationeryType = async (id) => {
+  try {
+    // If the API is truly destructive DELETE:
+    await api.delete(`stationary-types/${id}/`);
+    return true;
+  } catch (error) {
+    console.error('Error deleting stationery type:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+
 
 
   export default {
@@ -730,5 +906,15 @@ export const markDepartmentInactive = async (departmentId) => {
     fetchDepartmentDetails,
     getAllNonStudentUsers,
     assignTeachersToDepartment,
-    markDepartmentInactive,   
+    markDepartmentInactive, 
+    fetchStationaryTypesAndInventory, 
+    updateStationery, 
+    saveAcademicYear,
+    sendForgotPasswordLink,
+    createStationery,
+    fetchStationeryTypes,
+    createStationeryType,
+    updateStationeryType,
+    deleteStationeryType,   
+    
   };

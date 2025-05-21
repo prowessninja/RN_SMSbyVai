@@ -16,11 +16,12 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  Vibration,
 
 } from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import Eyecon from 'react-native-vector-icons/FontAwesome';
+import Eyecon from 'react-native-vector-icons/FontAwesome5';
 import CommonAPI from '../api/common';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LottieView from 'lottie-react-native';
@@ -93,12 +94,6 @@ const StandardsScreen = () => {
   const [newStandardName, setNewStandardName] = useState('');
   const [newStandardStationery, setNewStandardStationery] = useState([]); // multiselect
 
-
-
-
-
-
-
   useEffect(() => {
     fetchMetaData();
   }, []);
@@ -126,7 +121,8 @@ const StandardsScreen = () => {
       if (branchesData.length > 0) setSelectedBranch(branchesData[0].id);
       if (academicYearsData.length > 0) setSelectedYear(academicYearsData[0].id);
 
-      fetchStandardsData(academicYearsData[0].id, branchesData[0].id);
+      await fetchStandardsData(academicYearsData[0].id, branchesData[0].id); // 👈 This is the magic
+
     } catch (error) {
       console.error('Error fetching metadata:', error);
     } finally {
@@ -136,6 +132,7 @@ const StandardsScreen = () => {
 
   const fetchStandardsData = async (yearId, branchId) => {
     try {
+      setLoading(true);
       console.log('📦 fetchStandardsData triggered with:', { yearId, branchId });
       const token = await AsyncStorage.getItem('userToken');
       const standardsRes = await CommonAPI.fetchStandardsForYearBranch(yearId, branchId, token);
@@ -185,7 +182,7 @@ const StandardsScreen = () => {
       // Safe API call
       const response = await CommonAPI.fetchAllStationery(token);
       const allItems = Array.isArray(response) ? response : [];
-      console.log('✅ Stationery fetched:', allItems);
+      //console.log('✅ Stationery fetched:', allItems);
       // Optional: Filter if needed by branch/standard
       setAllStationery(allItems.map(item => ({
         id: item.id,
@@ -216,34 +213,34 @@ const StandardsScreen = () => {
   };
 
   const handleCreateStandard = async () => {
-  if (!newStandardName.trim() || newStandardStationery.length === 0) {
-    Alert.alert('Validation', 'Please enter a name and select at least one stationery item.');
-    return;
-  }
+    if (!newStandardName.trim() || newStandardStationery.length === 0) {
+      Alert.alert('Validation', 'Please enter a name and select at least one stationery item.');
+      return;
+    }
 
-  try {
-    setOverlayText('Creating standard…');
-    setShowOverlay(true);
+    try {
+      setOverlayText('Creating standard…');
+      setShowOverlay(true);
 
-    await CommonAPI.createStandard({
-      name: newStandardName.trim(),
-      branch: selectedBranch,
-      academic_year_id: selectedYear,
-      stationary_ids: newStandardStationery,
-    });
+      await CommonAPI.createStandard({
+        name: newStandardName.trim(),
+        branch: selectedBranch,
+        academic_year_id: selectedYear,
+        stationary_ids: newStandardStationery,
+      });
 
-    setOverlayText('Standard created!');
-    setCreateStandardModalVisible(false);
-    setNewStandardName('');
-    setNewStandardStationery([]);
-    fetchStandardsData(selectedYear, selectedBranch);
-  } catch (err) {
-    console.error('Create standard failed:', err);
-    setOverlayText('Failed to create standard.');
-  } finally {
-    setTimeout(() => setShowOverlay(false), 1500);
-  }
-};
+      setOverlayText('Standard created!');
+      setCreateStandardModalVisible(false);
+      setNewStandardName('');
+      setNewStandardStationery([]);
+      fetchStandardsData(selectedYear, selectedBranch);
+    } catch (err) {
+      console.error('Create standard failed:', err);
+      setOverlayText('Failed to create standard.');
+    } finally {
+      setTimeout(() => setShowOverlay(false), 1500);
+    }
+  };
 
 
 
@@ -408,7 +405,7 @@ const StandardsScreen = () => {
         classRepresentative: selectedClassRep,
       });
 
-      console.log('[Add Students Success]', response);
+      //console.log('[Add Students Success]', response);
 
       Alert.alert('Success', 'Students added successfully.');
       setShowAddStudentsModal(false);
@@ -575,29 +572,51 @@ const StandardsScreen = () => {
             navigation.navigate('ClassAndSecDet', {
               branch_id: selectedBranch,
               section_id: section.id,
-              standard_id: standardId, // 🔹 Add this
+              standard_id: standardId,
             })
           }
         >
-          <Text>View</Text>
+          <Eyecon name="eye" size={15} color="#2d3e83" />
         </TouchableOpacity>
+
         <TouchableOpacity
           onPress={() => handleAddStudents(selectedBranch, standardId, section.id)}
           style={styles.actionBtn}
         >
-          <Text>Add Students</Text>
+          <Eyecon name="user-plus" size={15} color="#2d3e83" />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => openChangeStudentsModal(standardId, section.id)} style={styles.actionBtn}><Text>Change Students</Text></TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => openChangeStudentsModal(standardId, section.id)}
+          style={styles.actionBtn}
+        >
+          <Eyecon name="user-edit" size={15} color="#2d3e83" />
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.actionBtn}
-          onPress={() => handleToggleSectionActive(section)}
+          onPress={() => {
+            Vibration.vibrate([0, 200, 100, 200, 100, 300]);
+            Alert.alert(
+              'Confirm',
+              section.is_active
+                ? 'Are you sure you want to mark this section as inactive?'
+                : 'Are you sure you want to activate this section?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Confirm', onPress: () => handleToggleSectionActive(section) },
+              ]
+            );
+          }}
         >
-          <Text>
-            {section.is_active ? 'Mark Inactive' : 'Activate'}
-          </Text>
+          <Icon
+            name={section.is_active ? 'close' : 'check-circle'}
+            size={20}
+            color="#2d3e83"
+          />
         </TouchableOpacity>
       </View>
+
     </View>
   );
 
@@ -614,19 +633,29 @@ const StandardsScreen = () => {
 
             <View style={styles.actionButtonsRow}>
               <TouchableOpacity style={styles.stdActionBtn} onPress={() => handleEditStandard(standard)}>
-                <Text>Edit</Text>
+                <Eyecon name="pen" size={15} color="#2d3e83" />
               </TouchableOpacity>
+
               <TouchableOpacity style={styles.stdActionBtn} onPress={() => handleAddSection(standard)}>
-                <Text>Add Sec.</Text>
+                <Eyecon name="plus-circle" size={15} color="#2d3e83" />
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.stdActionBtn}
-                onPress={() => handleMarkInactive(standard)}
+                onPress={() => {
+                  Vibration.vibrate([0, 200, 100, 200, 100, 300]);
+                  Alert.alert(
+                    'Confirm',
+                    'Are you sure you want to mark this standard as inactive?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Confirm', onPress: () => handleMarkInactive(standard) },
+                    ]
+                  );
+                }}
               >
-                <Text>Mark Inactive</Text>
+                <Eyecon name="times-circle" size={15} color="#2d3e83" />
               </TouchableOpacity>
-
             </View>
 
             <TouchableOpacity onPress={() => handleCardPress(standard)} style={styles.expandIcon}>
@@ -657,7 +686,10 @@ const StandardsScreen = () => {
         {isExpanded && (
           <View style={{ paddingLeft: 10 }}>
             {sections === undefined ? (
-              <ActivityIndicator style={{ marginTop: 10 }} size="small" color="#2d3e83" />
+              <View style={{ padding: 16, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color="#2d3e83" />
+                <Text style={{ marginTop: 8, fontSize: 12, color: '#2d3e83' }}>Loading sections...</Text>
+              </View>
             ) : sections.length === 0 ? (
               <Text style={{ marginTop: 10, color: '#888', marginLeft: 10 }}>
                 No sections available.
@@ -668,9 +700,9 @@ const StandardsScreen = () => {
           </View>
         )}
       </View>
-
     );
   };
+
 
 
   return (
@@ -1122,6 +1154,9 @@ const StandardsScreen = () => {
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#2d3e83" />
+          <Text style={{ marginTop: 12, fontSize: 16, color: '#2d3e83' }}>
+            Loading standards... hang tight!
+          </Text>
         </View>
       ) : (
         <>
@@ -1186,7 +1221,7 @@ const StandardsScreen = () => {
             </View>
             <TouchableOpacity style={styles.createButton} onPress={openCreateStandardModal}>
               <Icon name="add-circle-outline" size={20} color="#2d3e83" />
-              <Text style={styles.createText}>Create Standard</Text>
+              <Text style={styles.createText}>Standard</Text>
             </TouchableOpacity>
           </View>
 

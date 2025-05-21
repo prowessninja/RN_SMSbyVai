@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  Modal,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -18,7 +19,7 @@ import { fetchUsersList } from '../api/userlist';
 import UserCardList from '../components/UserCardList';
 import debounce from 'lodash.debounce';
 import PermissionsHOC from '../hoc/PermissionsHOC';
-
+import Eyecon from 'react-native-vector-icons/FontAwesome5';
 
 const UsersScreen = ({ hasPermission }) => {
   const navigation = useNavigation();
@@ -34,6 +35,7 @@ const UsersScreen = ({ hasPermission }) => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [showProfileCard, setShowProfileCard] = useState(true);
 
   const debounceRef = useRef();
 
@@ -70,7 +72,6 @@ const UsersScreen = ({ hasPermission }) => {
       setSelectedGroup(null);
       setPage(1);
 
-      // Refresh groups whenever screen gains focus
       if (selectedYear && selectedBranch) {
         const fetchGroups = async () => {
           try {
@@ -91,14 +92,13 @@ const UsersScreen = ({ hasPermission }) => {
 
         fetchGroups();
       }
-    }, [selectedYear, selectedBranch]) // Re-run when year or branch changes
+    }, [selectedYear, selectedBranch])
   );
 
   useEffect(() => {
     if (!token || !selectedYear || !selectedBranch) return;
 
     let isMounted = true;
-
     const fetchData = async () => {
       setLoading(true);
       try {
@@ -111,7 +111,6 @@ const UsersScreen = ({ hasPermission }) => {
           page_size: 10,
         };
         const { results = [], next } = await fetchUsersList(token, filters);
-
         if (isMounted) {
           setUsers(prev => (page === 1 ? results : [...prev, ...results]));
           setHasMore(!!next);
@@ -156,52 +155,66 @@ const UsersScreen = ({ hasPermission }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.sectionGreeting}>
-        {user?.profile_image ? (
-          <Image source={{ uri: user.profile_image }} style={styles.profileImage} />
-        ) : (
-          <LottieView
-            source={require('../../assets/default.json')}
-            autoPlay
-            loop
-            style={styles.animation}
-          />
-        )}
-        <Text style={styles.greeting}>{user?.first_name || 'User'}</Text>
-        <Text style={styles.role}>{user?.group?.name || 'Role'}</Text>
+      {/* Profile Toggle */}
+      <TouchableOpacity
+        onPress={() => setShowProfileCard(prev => !prev)}
+        style={styles.iconToggle}
+      >
+        <Eyecon name={showProfileCard ? 'eye-slash' : 'eye'} size={15} color="#fff" />
+      </TouchableOpacity>
 
-        <View style={styles.dropdownRow}>
-          <Dropdown
-            style={styles.dropdown}
-            data={academicYears.map(year => ({ label: year.name, value: year.id }))} 
-            labelField="label"
-            valueField="value"
-            value={selectedYear}
-            placeholder="Academic Year"
-            placeholderStyle={styles.dropdownPlaceholder}
-            selectedTextStyle={styles.dropdownText}
-            onChange={item => {
-              setSelectedYear(item.value);
-              setPage(1);
-            }}
-          />
-          <Dropdown
-            style={styles.dropdown}
-            data={branches.map(branch => ({ label: branch.name, value: branch.id }))} 
-            labelField="label"
-            valueField="value"
-            value={selectedBranch}
-            placeholder="Branch"
-            placeholderStyle={styles.dropdownPlaceholder}
-            selectedTextStyle={styles.dropdownText}
-            onChange={item => {
-              setSelectedBranch(item.value);
-              setPage(1);
-            }}
-          />
-        </View>
+      {/* Header Card */}
+      <View style={{ padding: 15, marginBottom: 0.5 }}>
+        {showProfileCard && (
+          <View style={styles.sectionGreeting}>
+            {user?.profile_image ? (
+              <Image source={{ uri: user.profile_image }} style={styles.profileImage} />
+            ) : (
+              <LottieView
+                source={require('../../assets/default.json')}
+                autoPlay
+                loop
+                style={styles.animation}
+              />
+            )}
+            <Text style={styles.greeting}>{user?.first_name || 'User'}</Text>
+            <Text style={styles.role}>{user?.group?.name || 'Role'}</Text>
+
+            <View style={styles.dropdownRow}>
+              <Dropdown
+                style={styles.dropdown}
+                data={academicYears.map(year => ({ label: year.name, value: year.id }))}
+                labelField="label"
+                valueField="value"
+                value={selectedYear}
+                placeholder="Academic Year"
+                placeholderStyle={styles.dropdownPlaceholder}
+                selectedTextStyle={styles.dropdownText}
+                onChange={item => {
+                  setSelectedYear(item.value);
+                  setPage(1);
+                }}
+              />
+              <Dropdown
+                style={styles.dropdown}
+                data={branches.map(branch => ({ label: branch.name, value: branch.id }))}
+                labelField="label"
+                valueField="value"
+                value={selectedBranch}
+                placeholder="Branch"
+                placeholderStyle={styles.dropdownPlaceholder}
+                selectedTextStyle={styles.dropdownText}
+                onChange={item => {
+                  setSelectedBranch(item.value);
+                  setPage(1);
+                }}
+              />
+            </View>
+          </View>
+        )}
       </View>
 
+      {/* Page Title */}
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={24} color="#2d3e83" />
@@ -209,17 +222,17 @@ const UsersScreen = ({ hasPermission }) => {
         <Icon name="account-group" size={24} color="#2d3e83" style={{ marginLeft: 10 }} />
         <Text style={styles.title}>Users</Text>
         {hasPermission?.('add_user') && (
-        <TouchableOpacity
-          style={[styles.addButton, { flexDirection: 'row', alignItems: 'center' }]}
-          onPress={handleAddUserPress}
-        >
-          <Icon name="account-plus" size={24} color="#2d3e83" />
-          <Text style={styles.addText}>Add User</Text>
-        </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={[styles.addButton, { flexDirection: 'row', alignItems: 'center' }]}
+            onPress={handleAddUserPress}
+          >
+            <Icon name="account-plus" size={24} color="#2d3e83" />
+            <Text style={styles.addText}>User</Text>
+          </TouchableOpacity>
+        )}
       </View>
-      
 
+      {/* Filters */}
       <View style={styles.filterRow}>
         <Dropdown
           style={styles.dropdownHalf}
@@ -243,15 +256,16 @@ const UsersScreen = ({ hasPermission }) => {
         />
       </View>
 
+      {/* List */}
       <UserCardList users={users} loading={loading} onEndReached={handleLoadMore} />
 
-      {loading && (
-        <ActivityIndicator
-          size="small"
-          color="#007AFF"
-          style={styles.loadingIndicator}
-        />
-      )}
+      {/* Overlay Loader */}
+      <Modal transparent visible={loading}>
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Loading users...</Text>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -259,7 +273,6 @@ const UsersScreen = ({ hasPermission }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 15, backgroundColor: '#f4f6f9' },
 
-  // Profile header
   sectionGreeting: {
     alignItems: 'center',
     marginBottom: 15,
@@ -293,7 +306,6 @@ const styles = StyleSheet.create({
   dropdownText: { fontSize: 14, color: '#333' },
   dropdownPlaceholder: { color: '#999', fontSize: 14 },
 
-  // Header + Add
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   title: {
     fontSize: 22, fontWeight: 'bold', marginLeft: 8, color: '#2d3e83', flex: 1,
@@ -301,32 +313,50 @@ const styles = StyleSheet.create({
   addButton: { marginLeft: 'auto' },
   addText: { marginLeft: 6, fontSize: 16, color: '#2d3e83', fontWeight: '500' },
 
-  // Group + Search horizontal layout
   filterRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 10,
     marginBottom: 10,
   },
   dropdownHalf: {
-    flex: 1,
+    width: '48%',
     backgroundColor: '#fff',
     borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     height: 40,
   },
   searchInputHalf: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    width: '48%',
     height: 40,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    paddingHorizontal: 10,
+    fontSize: 14,
+    color: '#333',
   },
 
-  // Loader
-  loadingIndicator: { marginVertical: 20 },
+  iconToggle: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: '#2d3e83',
+    padding: 8,
+    borderRadius: 20,
+    zIndex: 10,
+  },
+
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
 });
 
 export default PermissionsHOC(UsersScreen, ['view_user']);
