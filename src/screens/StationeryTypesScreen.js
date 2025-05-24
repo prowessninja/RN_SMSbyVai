@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Vibration,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Eyecon from 'react-native-vector-icons/FontAwesome';
@@ -61,14 +62,25 @@ const StationeryTypesScreen = () => {
         CommonAPI.fetchAcademicYears(),
         CommonAPI.fetchCurrentUserInfo(),
       ]);
-      const branchesData = branchRes.data?.results || [];
-      const academicYearsData = yearRes.data?.results || [];
+
+      const branchesDataRaw = branchRes.data?.results || [];
+      const yearsDataRaw = yearRes.data?.results || [];
       const user = userRes.data;
 
-      setBranches(branchesData.map(b => ({ label: b.name, value: b.id })));
-      setAcademicYears(academicYearsData.map(y => ({ label: y.name, value: y.id })));
-      setSelectedBranch(branchesData[0]?.id || null);
-      setSelectedYear(academicYearsData[0]?.id || null);
+      const mappedBranches = branchesDataRaw.map(b => ({ label: b.name, value: b.id }));
+      const mappedYears = yearsDataRaw.map(y => ({ label: y.name, value: y.id }));
+
+      setBranches(mappedBranches);
+      setAcademicYears(mappedYears);
+
+      // Set default selections after setting dropdown data
+      if (mappedBranches.length > 0) {
+        setSelectedBranch(mappedBranches[0].value);
+      }
+      if (mappedYears.length > 0) {
+        setSelectedYear(mappedYears[0].value);
+      }
+
       setCurrentUserName(user.first_name || 'User');
       setCurrentUserRole(user.group?.name || 'Role');
       setProfileImage(user.profile_image);
@@ -76,6 +88,7 @@ const StationeryTypesScreen = () => {
       console.error('Failed to load profile or dropdowns', err);
     }
   };
+
 
   useEffect(() => {
     fetchTypes();
@@ -103,9 +116,29 @@ const StationeryTypesScreen = () => {
     setModalLoading(true);
     try {
       if (isEditMode) {
-        await CommonAPI.updateStationeryType(formData.id, formData);
+        // Prepare edit payload
+        const editPayload = {
+          name: formData.name,
+          description: formData.description,
+          is_active: formData.is_active,
+        };
+        await CommonAPI.updateStationeryType(formData.id, editPayload);
       } else {
-        await CommonAPI.createStationeryType(formData);
+        // Prepare create payload
+        if (!selectedBranch || !selectedYear) {
+          Alert.alert('Missing Info', 'Please select both Branch and Academic Year.');
+          setModalLoading(false);
+          return;
+        }
+
+        const createPayload = {
+          name: formData.name,
+          description: formData.description,
+          is_active: formData.is_active,
+          branch_id: selectedBranch,
+          academic_year_id: selectedYear,
+        };
+        await CommonAPI.createStationeryType(createPayload);
       }
       setModalVisible(false);
       fetchTypes();
@@ -117,13 +150,16 @@ const StationeryTypesScreen = () => {
     }
   };
 
+
   const handleDelete = (id) => {
+    Vibration.vibrate([0, 200, 100, 200, 100, 300]);
     Alert.alert('Delete', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
+          
           setActionLoading(true);
           try {
             await CommonAPI.deleteStationeryType(id);
@@ -223,7 +259,7 @@ const StationeryTypesScreen = () => {
             <Icon name="arrow-back" size={24} color="#2d3e83" />
           </TouchableOpacity>
           <Icon name="inventory" size={24} color="#2d3e83" style={{ marginLeft: 10 }} />
-          <Text style={styles.title}>Stationery Type</Text>
+          <Text style={styles.title}>Stationery Types</Text>
         </View>
         <TouchableOpacity style={styles.addBtn} onPress={openCreate}>
           <Icon name="add-circle-outline" size={24} color="#2d3e83" />

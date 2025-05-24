@@ -19,6 +19,10 @@ import Eyecon from 'react-native-vector-icons/FontAwesome';
 import CommonAPI from '../api/common';
 import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
+//import MapboxGL from '@rnmapbox/maps';
+//import { fetchMapboxToken } from '../api/mapHelper';
+import MapView, { Marker } from 'react-native-maps';
+
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -48,6 +52,8 @@ const BranchesScreen = () => {
   useEffect(() => {
     fetchMetaData();
   }, []);
+
+
 
   const fetchMetaData = async () => {
     try {
@@ -115,47 +121,68 @@ const BranchesScreen = () => {
   };
 
   const renderBranchCard = (branch) => {
-  const isExpanded = expandedBranches[branch.id];
-  const cardColor = RANDOM_BG_COLORS[branch.id % RANDOM_BG_COLORS.length];
-  const address = branch.address || {};
+    const isExpanded = expandedBranches[branch.id];
+    const cardColor = RANDOM_BG_COLORS[branch.id % RANDOM_BG_COLORS.length];
+    const address = branch.address || {};
 
-  return (
-    <View key={branch.id} style={[styles.cardContainer, { backgroundColor: cardColor }]}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{branch.name}</Text>
-        <TouchableOpacity onPress={() => handleCardPress(branch)}>
-          <Icon name={isExpanded ? 'expand-less' : 'expand-more'} size={24} color="#333" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.cardMetaRow}>
-        <Text style={styles.cardMetaText}><Text style={styles.boldLabel}>State:</Text> {address.state || 'N/A'}</Text>
-        <Text style={styles.cardMetaText}><Text style={styles.boldLabel}>City:</Text> {address.city || 'N/A'}</Text>
-        <Text style={styles.cardMetaText}><Text style={styles.boldLabel}>Zip Code:</Text> {address.zip_code || 'N/A'}</Text>
-        <Text style={styles.cardMetaText}><Text style={styles.boldLabel}>Landmark:</Text> {address.landmark || 'N/A'}</Text>
-        <Text style={styles.cardMetaText}><Text style={styles.boldLabel}>Street:</Text> {address.street || 'N/A'}</Text>
-        <Text style={styles.cardMetaText}><Text style={styles.boldLabel}>Status:</Text> {branch.is_active ? 'Active' : 'Inactive'}</Text>
-      </View>
-
-      {isExpanded && (
-        <View style={styles.expandedActions}>
-          <TouchableOpacity style={styles.actionButton}>
-            <Eyecon name="eye" size={16} color="#fff" />
-            <Text style={styles.actionText}>View</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Icon name="edit" size={16} color="#fff" />
-            <Text style={styles.actionText}>Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Icon name="block" size={16} color="#fff" />
-            <Text style={styles.actionText}>Mark Inactive</Text>
+    return (
+      <View key={branch.id} style={[styles.cardContainer, { backgroundColor: cardColor }]}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>{branch.name}</Text>
+          <TouchableOpacity onPress={() => handleCardPress(branch)}>
+            <Icon name={isExpanded ? 'expand-less' : 'expand-more'} size={24} color="#333" />
           </TouchableOpacity>
         </View>
-      )}
-    </View>
-  );
-};
+
+        <View style={styles.cardMetaRow}>
+          <Text style={styles.cardMetaText}><Text style={styles.boldLabel}>State:</Text> {address.state || 'N/A'}</Text>
+          <Text style={styles.cardMetaText}><Text style={styles.boldLabel}>City:</Text> {address.city || 'N/A'}</Text>
+          <Text style={styles.cardMetaText}><Text style={styles.boldLabel}>Zip Code:</Text> {address.zip_code || 'N/A'}</Text>
+          <Text style={styles.cardMetaText}><Text style={styles.boldLabel}>Landmark:</Text> {address.landmark || 'N/A'}</Text>
+          <Text style={styles.cardMetaText}><Text style={styles.boldLabel}>Street:</Text> {address.street || 'N/A'}</Text>
+          <Text style={styles.cardMetaText}><Text style={styles.boldLabel}>Status:</Text> {branch.is_active ? 'Active' : 'Inactive'}</Text>
+        </View>
+
+        {isExpanded && (
+          <>
+            <View style={styles.expandedActions}>
+              
+              <TouchableOpacity style={styles.actionButton}>
+                <Icon name="edit" size={16} color="#fff" />
+                <Text style={styles.actionText}>Edit</Text>
+              </TouchableOpacity>
+              
+            </View>
+
+            {branch.center_point?.coordinates && (
+              <MapView
+                style={styles.map}
+                initialRegion={{
+                  latitude: branch.center_point.coordinates[1],
+                  longitude: branch.center_point.coordinates[0],
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                }}
+                scrollEnabled={true}       // allow dragging
+                zoomEnabled={true}         // allow pinch zoom
+                pitchEnabled={true}        // allow tilt gestures
+                rotateEnabled={true}       // allow rotation
+              >
+                <Marker
+                  coordinate={{
+                    latitude: branch.center_point.coordinates[1],
+                    longitude: branch.center_point.coordinates[0],
+                  }}
+                  title={branch.name}
+                />
+              </MapView>
+            )}
+          </>
+        )}
+
+      </View>
+    );
+  };
 
 
 
@@ -228,7 +255,7 @@ const BranchesScreen = () => {
             </View>
             <TouchableOpacity style={styles.createButton}>
               <Icon name="add-circle-outline" size={20} color="#2d3e83" />
-              <Text style={styles.createText}>Create Branch</Text>
+              <Text style={styles.createText}>Branch</Text>
             </TouchableOpacity>
           </View>
 
@@ -271,7 +298,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2d3e83',
     padding: 20,
     borderRadius: 10,
-},
+  },
   avatar: { width: 80, height: 80, borderRadius: 40, marginBottom: 12 },
   animation: { width: 80, height: 80, marginBottom: 12 },
   greeting: { fontSize: 22, fontWeight: '700', color: '#fff' },
@@ -292,11 +319,11 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardTitle: { fontSize: 18, fontWeight: 'bold', color: '#2d3e83' },
   cardMetaRow: {
-marginTop: 10,
-paddingTop: 8,
-borderTopWidth: 1,
-borderTopColor: '#2d3e83',
-},
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#2d3e83',
+  },
   expandedActions: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 10 },
   actionButton: {
     backgroundColor: '#2d3e83',
@@ -327,29 +354,36 @@ borderTopColor: '#2d3e83',
   createButton: { flexDirection: 'row', alignItems: 'center' },
   createText: { marginLeft: 5, fontWeight: '600', color: '#2d3e83' },
   cardDetails: {
-  marginTop: 10,
-  paddingHorizontal: 10,
-},
+    marginTop: 10,
+    paddingHorizontal: 10,
+  },
 
-detailText: {
-  fontSize: 14,
-  color: '#333',
-  marginBottom: 4,
-},
+  detailText: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 4,
+  },
 
-metaText: {
-  fontSize: 14,
-  fontWeight: '500',
-  color: '#333',
-},
-cardMetaText: {
-  fontSize: 13,
-  marginVertical: 2,
-  color: '#333',
-},
-boldLabel: {
-  fontWeight: 'bold',
-},
+  metaText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  cardMetaText: {
+    fontSize: 13,
+    marginVertical: 2,
+    color: '#333',
+  },
+  boldLabel: {
+    fontWeight: 'bold',
+  },
+
+  map: {
+    height: 350,
+    marginTop: 10,
+    borderRadius: 10,
+  },
+
 
 });
 

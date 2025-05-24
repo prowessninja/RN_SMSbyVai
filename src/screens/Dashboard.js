@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   },
   sectionGreeting: {
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 5,
     backgroundColor: '#2d3e83',
     padding: 20,
     borderRadius: 16,
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 20,
     marginRight: 10,
-    marginTop: 10,
+    marginTop: 1,
   },
   dropdownRow: {
     flexDirection: 'row',

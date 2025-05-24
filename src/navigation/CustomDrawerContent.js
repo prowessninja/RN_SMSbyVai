@@ -12,6 +12,8 @@ import Animated, { Layout, FadeInDown, FadeOutUp } from 'react-native-reanimated
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigation, useTheme } from '@react-navigation/native';
+import LottieView from 'lottie-react-native';
+
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 
@@ -161,11 +163,13 @@ const CustomDrawerContent = () => {
         { label: 'Stationery Fee', permissions: ['view_stationarytype'] },
       ],
     },
-    { label: 'Inventory', icon: 'archive', permissions: ['view_inventory'] },
     {
-      label: 'Inventory Analytics',
-      icon: 'chart-bar',
-      permissions: ['view_inventorytracking'],
+      label: 'Inventory', icon: 'archive', permissions: ['view_inventory'],
+      children: [
+        { label: 'Inventory', permissions: ['view_inventory'] },
+        { label: 'Inventory Types', permissions: ['view_inventory'] },
+        { label: 'Inventory Analytics', permissions: ['view_inventory'] },
+      ],
     },
     {
       label: 'File Management',
@@ -250,11 +254,20 @@ const CustomDrawerContent = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView>
         <View style={styles.profileContainer}>
-          <Image
-            source={{ uri: user?.profile_image || undefined }}
-            defaultSource={require('../../assets/avatar.png')}
-            style={styles.avatar}
-          />
+          {user?.profile_image ? (
+            <Image
+              source={{ uri: user.profile_image }}
+              defaultSource={require('../../assets/avatar.png')}
+              style={styles.avatar}
+            />
+          ) : (
+            <LottieView
+              source={require('../../assets/default.json')}
+              autoPlay
+              loop
+              style={styles.avatar}
+            />
+          )}
           <Text style={[styles.nameText, { color: colors.text }]}>
             {user?.full_name || user?.username || 'Welcome'}
           </Text>
@@ -287,73 +300,73 @@ const CustomDrawerContent = () => {
 };
 
 const styles =
-StyleSheet.create({
-container: { flex: 1, paddingTop: 40 },
-profileContainer: {
-alignItems: 'center',
-marginBottom: 20,
-paddingHorizontal: 16,
-},
-avatar: {
-width: 80,
-height: 80,
-borderRadius: 40,
-backgroundColor: '#ccc',
-},
-nameText: {
-fontSize: 18,
-fontWeight: '700',
-marginTop: 10,
-},
-roleText: {
-fontSize: 14,
-marginBottom: 6,
-},
-profileButton: {
-paddingHorizontal: 16,
-paddingVertical: 6,
-borderRadius: 8,
-},
-profileButtonText: {
-fontSize: 14,
-fontWeight: '600',
-},
-separator: {
-height: 1,
-marginVertical: 10,
-marginHorizontal: 16,
-},
-menuItem: {
-flexDirection: 'row',
-alignItems: 'center',
-paddingHorizontal: 16,
-paddingVertical: 14,
-borderRadius: 8,
-marginHorizontal: 10,
-marginVertical: 4,
-},
-menuText: {
-fontSize: 16,
-marginLeft: 10,
-},
-subMenuItem: {
-paddingLeft: 50,
-paddingVertical: 10,
-marginHorizontal: 10,
-borderRadius: 6,
-},
-subMenuText: {
-fontSize: 14,
-},
-footer: {
-borderTopWidth: 1,
-padding: 16,
-alignItems: 'center',
-},
-poweredBy: {
-fontSize: 12,
-textAlign: 'center',
-},
-});
+  StyleSheet.create({
+    container: { flex: 1, paddingTop: 40 },
+    profileContainer: {
+      alignItems: 'center',
+      marginBottom: 20,
+      paddingHorizontal: 16,
+    },
+    avatar: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: '#fff',
+    },
+    nameText: {
+      fontSize: 18,
+      fontWeight: '700',
+      marginTop: 10,
+    },
+    roleText: {
+      fontSize: 14,
+      marginBottom: 6,
+    },
+    profileButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+      borderRadius: 8,
+    },
+    profileButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    separator: {
+      height: 1,
+      marginVertical: 10,
+      marginHorizontal: 16,
+    },
+    menuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderRadius: 8,
+      marginHorizontal: 10,
+      marginVertical: 4,
+    },
+    menuText: {
+      fontSize: 16,
+      marginLeft: 10,
+    },
+    subMenuItem: {
+      paddingLeft: 50,
+      paddingVertical: 10,
+      marginHorizontal: 10,
+      borderRadius: 6,
+    },
+    subMenuText: {
+      fontSize: 14,
+    },
+    footer: {
+      borderTopWidth: 1,
+      padding: 16,
+      alignItems: 'center',
+    },
+    poweredBy: {
+      fontSize: 12,
+      textAlign: 'center',
+    },
+  });
 
 export default CustomDrawerContent;

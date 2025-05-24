@@ -19,6 +19,9 @@ import StationeryListScreen from '../screens/StationeryListScreen';
 import ClassAndSectionDetailsScreen from '../screens/ClassAndSectionDetailsScreen';
 import DepartmentDetailsScreen from '../screens/DepartmentDetailsScreen';
 import StationeryTypesScreen from '../screens/StationeryTypesScreen';
+import InventoryScreen from '../screens/InventoryScreen';
+import InventoryTypesScreen from '../screens/InventoryTypesScreen';
+import InventoryAnalyticsScreen from '../screens/InventoryAnalyticsScreen';
 
 
 const Drawer = createDrawerNavigator();
@@ -39,7 +42,9 @@ function UsersStack() {
       <Stack.Screen name="ClassAndSecDet" component={ClassAndSectionDetailsScreen} />
       <Stack.Screen name="DepartmentDet" component={DepartmentDetailsScreen} />
       <Stack.Screen name="Stationery Types" component={StationeryTypesScreen} />
-
+      <Stack.Screen name="Inventory" component={InventoryScreen} />
+      <Stack.Screen name="Inventory Types" component={InventoryTypesScreen} />
+      <Stack.Screen name="Inventory Analytics" component={InventoryAnalyticsScreen} />
     </Stack.Navigator>
   );
 }
@@ -63,6 +68,9 @@ const MainDrawer = () => {
       <Drawer.Screen name="ClassAndSecDet" component={ClassAndSectionDetailsScreen} />
       <Drawer.Screen name="DepartmentDet" component={DepartmentDetailsScreen} />
       <Drawer.Screen name="Stationery Types" component={StationeryTypesScreen} />
+      <Drawer.Screen name="Inventory" component={InventoryScreen} />
+      <Drawer.Screen name="Inventory Types" component={InventoryTypesScreen} />
+      <Drawer.Screen name="Inventory Analytics" component={InventoryAnalyticsScreen} />
     </Drawer.Navigator>
   );
 };

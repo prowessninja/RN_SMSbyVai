@@ -185,9 +185,9 @@ const styles = StyleSheet.create({
   },
   floatingTabBar: {
     position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
+    bottom: 5, // <- Try 0, 5 or 8 depending on device
+    left: 10,
+    right: 10,
     elevation: 10,
     backgroundColor: '#fff',
     borderRadius: 15,
@@ -196,8 +196,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowOffset: { width: 0, height: 5 },
     shadowRadius: 10,
-    borderTopWidth: 0, // remove default border
+    borderTopWidth: 0,
   },
+
   tabButton: {
     flex: 1,
     justifyContent: 'center',
