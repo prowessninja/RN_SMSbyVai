@@ -1,7 +1,6 @@
 apply plugin: "com.android.application"
 apply plugin: "com.facebook.react"
-
-import com.android.build.OutputFile
+apply plugin: "kotlin-android"
 
 react {
     // Customize if needed
@@ -17,10 +16,11 @@ def reactNativeArchitectures() {
 }
 
 android {
-    ndkVersion rootProject.ext.ndkVersion
-    compileSdkVersion rootProject.ext.compileSdkVersion
-
     namespace "com.rn_smsbyvai"
+
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    ndkVersion rootProject.ext.ndkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
 
     defaultConfig {
         applicationId "com.rn_smsbyvai"
@@ -28,6 +28,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        multiDexEnabled true
     }
 
     splits {
@@ -69,12 +70,15 @@ android {
     }
 
     applicationVariants.all { variant ->
-        variant.outputs.each { output ->
+        variant.outputs.all { output ->
+            def abi = output.getName().contains("x86_64") ? "x86_64" :
+                      output.getName().contains("x86") ? "x86" :
+                      output.getName().contains("arm64-v8a") ? "arm64-v8a" :
+                      output.getName().contains("armeabi-v7a") ? "armeabi-v7a" : null
+
             def versionCodes = ["armeabi-v7a": 1, "x86": 2, "arm64-v8a": 3, "x86_64": 4]
-            def abi = output.getFilter(OutputFile.ABI)
             if (abi != null) {
-                output.versionCodeOverride =
-                        defaultConfig.versionCode * 1000 + versionCodes.get(abi)
+                output.versionCodeOverride = defaultConfig.versionCode * 1000 + versionCodes.get(abi)
             }
 
             def appName = "SMS"
@@ -83,7 +87,7 @@ android {
             def versionCode = variant.versionCode
             def date = new Date().format("yyyyMMdd")
 
-            output.outputFileName = "${appName}-${buildType}-v${versionName}(${versionCode})-${date}.apk"
+            outputFileName = "${appName}-${buildType}-v${versionName}(${versionCode})-${date}.apk"
         }
     }
 }
@@ -91,8 +95,7 @@ android {
 dependencies {
     implementation("com.facebook.react:react-android")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.0.0")
-    implementation 'com.google.android.gms:play-services-maps:18.1.0'
-
+    implementation("com.google.android.gms:play-services-maps:18.1.0")
 
     debugImplementation("com.facebook.flipper:flipper:${FLIPPER_VERSION}")
     debugImplementation("com.facebook.flipper:flipper-network-plugin:${FLIPPER_VERSION}") {
@@ -100,7 +103,6 @@ dependencies {
     }
     debugImplementation("com.facebook.flipper:flipper-fresco-plugin:${FLIPPER_VERSION}")
 
-    // Hermes disabled → use JSC
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
@@ -108,6 +110,6 @@ dependencies {
     }
 }
 
-apply from: file("D:/RNProjects/RN_SMSbyVai/node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
-apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
+apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
+apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
 applyNativeModulesAppBuildGradle(project)

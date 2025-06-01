@@ -12,6 +12,7 @@ import {
   UIManager,
   Platform,
   FlatList,
+  TextInput,
 } from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -47,6 +48,25 @@ const BranchesScreen = () => {
   const [overlayText, setOverlayText] = useState('');
   const [expandedBranches, setExpandedBranches] = useState({});
   const [showProfileCard, setShowProfileCard] = useState(true);
+  const [branchFormVisible, setBranchFormVisible] = useState(false);
+  const [editingBranch, setEditingBranch] = useState(null);
+  const [branchFormData, setBranchFormData] = useState({
+    name: '', city: '', state: '', zip_code: '',
+    landmark: '', street: '', latitude: '', longitude: '',
+    is_main_branch: 'false',
+  });
+
+  const INDIAN_STATES = [
+    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+    'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
+    'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim',
+    'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand',
+    'West Bengal', 'Andaman and Nicobar Islands', 'Chandigarh',
+    'Dadra and Nagar Haveli', 'Daman and Diu', 'Delhi', 'Jammu and Kashmir',
+    'Ladakh', 'Lakshadweep', 'Puducherry'
+  ];
+
   const navigation = useNavigation();
 
   useEffect(() => {
@@ -146,12 +166,12 @@ const BranchesScreen = () => {
         {isExpanded && (
           <>
             <View style={styles.expandedActions}>
-              
-              <TouchableOpacity style={styles.actionButton}>
+
+              <TouchableOpacity style={styles.actionButton} onPress={() => openBranchModal(branch)}>
                 <Icon name="edit" size={16} color="#fff" />
                 <Text style={styles.actionText}>Edit</Text>
               </TouchableOpacity>
-              
+
             </View>
 
             {branch.center_point?.coordinates && (
@@ -184,6 +204,69 @@ const BranchesScreen = () => {
     );
   };
 
+  const openBranchModal = (branch = null) => {
+    if (branch) {
+      const address = branch.address || {};
+      setEditingBranch(branch);
+      setBranchFormData({
+        id: branch.id,
+        name: branch.name || '',
+        city: address.city || '',
+        state: address.state || '',
+        zip_code: address.zip_code || '',
+        landmark: address.landmark || '',
+        street: address.street || '',
+        latitude: branch.center_point?.coordinates?.[1]?.toString() || '',
+        longitude: branch.center_point?.coordinates?.[0]?.toString() || '',
+        is_main_branch: branch.is_main_branch ? 'true' : 'false',
+      });
+    } else {
+      setEditingBranch(null);
+      setBranchFormData({
+        name: '', city: '', state: '', zip_code: '',
+        landmark: '', street: '', latitude: '', longitude: '',
+        is_main_branch: 'false',
+      });
+    }
+    setBranchFormVisible(true);
+  };
+
+  const handleSaveBranch = async () => {
+    try {
+      setShowOverlay(true);
+      setOverlayText(editingBranch ? 'Updating branch...' : 'Creating branch...');
+
+      await CommonAPI.saveBranch(branchFormData);
+
+      setOverlayText('Success!');
+      setBranchFormVisible(false);
+
+      // 🔁 Refetch all metadata (including updated branch list)
+      await fetchMetaData();
+
+      // ✅ Optionally set the newly created branch as selected
+      if (!editingBranch) {
+        const branchList = await CommonAPI.fetchActiveBranches();
+        const allBranches = branchList.data?.results || [];
+        const newlyAdded = allBranches.find(b => b.name === branchFormData.name);
+        if (newlyAdded) {
+          setSelectedBranch(newlyAdded.id);
+          fetchBranchesData(newlyAdded.id);
+        }
+      } else {
+        fetchBranchesData(selectedBranch);
+      }
+
+    } catch (error) {
+      console.error('Branch save failed:', error);
+      setOverlayText('Failed to save branch.');
+    } finally {
+      setTimeout(() => setShowOverlay(false), 1500);
+    }
+  };
+
+
+
 
 
   return (
@@ -194,6 +277,120 @@ const BranchesScreen = () => {
           <Text style={styles.overlayText}>{overlayText}</Text>
         </View>
       </Modal>
+
+      <Modal visible={branchFormVisible} transparent animationType="slide">
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <View style={{
+            width: '90%',
+            backgroundColor: 'white',
+            padding: 20,
+            borderRadius: 10
+          }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 20 }}>
+              {editingBranch ? 'Edit Branch Details' : 'Add Branch'}
+            </Text>
+
+            {[
+              { key: 'name', label: 'Name of the Branch' },
+              { key: 'city', label: 'City' },
+              { key: 'zip_code', label: 'Zip Code' },
+              { key: 'landmark', label: 'Landmark' },
+              { key: 'street', label: 'Street' },
+              { key: 'latitude', label: 'Latitude' },
+              { key: 'longitude', label: 'Longitude' },
+            ].map(({ key, label }) => (
+              <View key={key} style={{ marginBottom: 15 }}>
+                <Text style={{ marginBottom: 5, fontWeight: '600', color: '#2d3e83' }}>{label}</Text>
+                <TextInput
+                  placeholder={label}
+                  value={branchFormData[key]}
+                  onChangeText={text => setBranchFormData(prev => ({ ...prev, [key]: text }))}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: '#ccc',
+                    borderRadius: 6,
+                    paddingHorizontal: 10,
+                    height: 40,
+                  }}
+                />
+              </View>
+            ))}
+
+            <View style={{ marginBottom: 15 }}>
+              <Text style={{ marginBottom: 5, fontWeight: '600', color: '#2d3e83' }}>State</Text>
+              <Dropdown
+                data={INDIAN_STATES.map(state => ({ label: state, value: state }))}
+                labelField="label"
+                valueField="value"
+                value={branchFormData.state}
+                placeholder="Select State"
+                onChange={item => setBranchFormData(prev => ({ ...prev, state: item.value }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: '#ccc',
+                  borderRadius: 6,
+                  paddingHorizontal: 10,
+                  height: 40,
+                }}
+              />
+            </View>
+
+            <View style={{ marginBottom: 20 }}>
+              <Text style={{ marginBottom: 5, fontWeight: '600', color: '#2d3e83' }}>Is Main Branch</Text>
+              <Dropdown
+                data={[{ label: 'True', value: 'true' }, { label: 'False', value: 'false' }]}
+                labelField="label"
+                valueField="value"
+                value={branchFormData.is_main_branch}
+                placeholder="Is Main Branch"
+                onChange={item => setBranchFormData(prev => ({ ...prev, is_main_branch: item.value }))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: '#ccc',
+                  borderRadius: 6,
+                  paddingHorizontal: 10,
+                  height: 40,
+                }}
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <TouchableOpacity
+                onPress={() => setBranchFormVisible(false)}
+                style={{
+                  backgroundColor: '#2d3e83',
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  borderRadius: 6,
+                }}
+              >
+                <Text style={{ color: 'white', fontWeight: 'bold' }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSaveBranch}
+                style={{
+                  backgroundColor: '#2d3e83',
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  borderRadius: 6,
+                }}
+              >
+                <Text style={{ color: 'white', fontWeight: 'bold' }}>
+                  {editingBranch ? 'Update' : 'Submit'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+
 
       {loading ? (
         <View style={styles.centered}>
@@ -253,9 +450,9 @@ const BranchesScreen = () => {
               <Icon name="apartment" size={24} color="#2d3e83" style={{ marginLeft: 10 }} />
               <Text style={styles.headerTitle}>Branches</Text>
             </View>
-            <TouchableOpacity style={styles.createButton}>
+            <TouchableOpacity style={styles.createButton} onPress={() => openBranchModal()}>
               <Icon name="add-circle-outline" size={20} color="#2d3e83" />
-              <Text style={styles.createText}>Branch</Text>
+              <Text style={styles.createText} >Branch</Text>
             </TouchableOpacity>
           </View>
 

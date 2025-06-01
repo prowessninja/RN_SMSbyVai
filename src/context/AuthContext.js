@@ -2,7 +2,11 @@ import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchCurrentUserInfo, fetchActiveBranches, fetchAcademicYears } from '../api/common';
 
+// Existing AuthContext
 export const AuthContext = createContext();
+
+// ➕ New AlertsContext
+export const AlertsContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
@@ -11,6 +15,12 @@ export const AuthProvider = ({ children }) => {
   const [branches, setBranches] = useState([]);
   const [academicYears, setAcademicYears] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedBranch, setSelectedBranch] = useState(null);
+const [selectedAcademicYear, setSelectedAcademicYear] = useState(null);
+
+
+  // ➕ Badge count state for Alerts
+  const [badgeCount, setBadgeCount] = useState(0);
 
   const extractPermissions = (obj) => {
     let results = [];
@@ -50,8 +60,6 @@ export const AuthProvider = ({ children }) => {
       console.log('✅ Grouped Permissions by Codename:');
       Object.keys(grouped).forEach((type) => {
         console.log(` LOG    🔑 Codenames: ${grouped[type].codenames.join(', ')}`);
-        //console.log(` LOG  - ${type}: ${grouped[type].operations.join(', ')}`);
-        
       });
     }
 
@@ -66,42 +74,38 @@ export const AuthProvider = ({ children }) => {
     const fetchedPermissions = extractPermissions(userData);
     setPermissions(fetchedPermissions);
 
-    // Group permissions by codename
     const groupedPermissions = groupPermissionsByCodename(fetchedPermissions);
 
     await AsyncStorage.setItem('userProfile', JSON.stringify(userData));
     await AsyncStorage.setItem('userPermissions', JSON.stringify(groupedPermissions));
 
-    // Development-only logging
     if (__DEV__) {
-      //console.log('✅ DEV: User Data:', userData);
-      //console.log('✅ DEV: Grouped Permissions:', groupedPermissions);
-
-      // Log Profile Picture URL and Group Name
-      console.log('✅ DEV: Profile Picture URL:', userData.profile_image); // Assuming profile_image is in userData
-      console.log('✅ DEV: User Group Name:', userData.group?.name || 'No Group'); // Extracting group name
+      console.log('✅ DEV: Profile Picture URL:', userData.profile_image);
+      console.log('✅ DEV: User Group Name:', userData.group?.name || 'No Group');
     }
   };
 
   const fetchAndSetBranchesAndYears = async () => {
-    const [branchesRes, yearsRes] = await Promise.all([fetchActiveBranches(), fetchAcademicYears()]);
-    const branchesData = branchesRes?.data?.results || [];
-    const yearsData = yearsRes?.data?.results || [];
+  const [branchesRes, yearsRes] = await Promise.all([
+    fetchActiveBranches(),
+    fetchAcademicYears(),
+  ]);
+  const branchesData = branchesRes?.data?.results || [];
+  const yearsData = yearsRes?.data?.results || [];
 
-    setBranches(branchesData);
-    setAcademicYears(yearsData);
+  setBranches(branchesData);
+  setAcademicYears(yearsData);
 
-    // Development-only logging
-    if (__DEV__) {
-      //console.log('✅ DEV: Branches:', branchesData);
-      const branchNames = branchesData.map(branch => branch.name);
-      console.log('Branch Names:', branchNames);
+  if (__DEV__) {
+    console.log('Branch Names:', branchesData.map(b => b.name));
+    console.log('Academic Year Names:', yearsData.map(y => y.name));
+  }
 
-      //console.log('✅ DEV: Academic Years:', yearsData);
-      const academicYearNames = yearsData.map(year => year.name);
-      console.log('Academic Year Names:', academicYearNames);
-    }
-  };
+  // Always set a default if available
+  if (branchesData.length) setSelectedBranch(branchesData[0]);
+  if (yearsData.length) setSelectedAcademicYear(yearsData[0]);
+};
+
 
   useEffect(() => {
     (async () => {
@@ -166,9 +170,15 @@ export const AuthProvider = ({ children }) => {
         loading,
         login,
         logout,
+        selectedBranch,
+    setSelectedBranch,
+    selectedAcademicYear,
+    setSelectedAcademicYear,
       }}
     >
-      {children}
+      <AlertsContext.Provider value={{ badgeCount, setBadgeCount }}>
+        {children}
+      </AlertsContext.Provider>
     </AuthContext.Provider>
   );
 };

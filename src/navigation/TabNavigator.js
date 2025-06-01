@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { AuthContext } from '../context/AuthContext';
+import { AuthContext, AlertsContext } from '../context/AuthContext'; // ✅ AlertsContext added here
 import Feather from 'react-native-vector-icons/Feather';
 
 import Dashboard from '../screens/Dashboard';
@@ -85,6 +85,7 @@ const LogoutTabButton = ({ accessibilityState }) => {
 
 const TabNavigator = () => {
   const navigation = useNavigation();
+  const { badgeCount } = useContext(AlertsContext); // ✅ Getting badgeCount from context
 
   return (
     <Tab.Navigator
@@ -165,7 +166,17 @@ const TabNavigator = () => {
       />
       <Tab.Screen name="Settings" component={SettingsScreen} />
       <Tab.Screen name="Dashboard" component={Dashboard} />
-      <Tab.Screen name="Alerts" component={AlertsScreen} />
+      <Tab.Screen
+        name="Alerts"
+        component={AlertsScreen}
+        options={{
+          tabBarBadge: badgeCount > 0 ? badgeCount : undefined, // ✅ Dynamic badge
+          tabBarBadgeStyle: {
+            backgroundColor: 'red',
+            color: 'white',
+          },
+        }}
+      />
       <Tab.Screen
         name="Logout"
         component={DummyScreen}
@@ -185,7 +196,7 @@ const styles = StyleSheet.create({
   },
   floatingTabBar: {
     position: 'absolute',
-    bottom: 5, // <- Try 0, 5 or 8 depending on device
+    bottom: 5,
     left: 10,
     right: 10,
     elevation: 10,
@@ -198,7 +209,6 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     borderTopWidth: 0,
   },
-
   tabButton: {
     flex: 1,
     justifyContent: 'center',

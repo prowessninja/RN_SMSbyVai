@@ -131,18 +131,28 @@ const StandardsScreen = () => {
   };
 
   const fetchStandardsData = async (yearId, branchId) => {
-    try {
-      setLoading(true);
-      console.log('📦 fetchStandardsData triggered with:', { yearId, branchId });
-      const token = await AsyncStorage.getItem('userToken');
-      const standardsRes = await CommonAPI.fetchStandardsForYearBranch(yearId, branchId, token);
+  try {
+    setLoading(true);
+    const token = await AsyncStorage.getItem('userToken');
+
+    const standardsRes = await CommonAPI.fetchStandardsForYearBranch(yearId, branchId, token);
+
+    if (!standardsRes || !Array.isArray(standardsRes.results)) {
+      console.warn('⚠️ Invalid or missing results from standards API:', standardsRes);
+      setStandardsData([]);
+    } else {
       setStandardsData(standardsRes.results);
-      setSectionsByStandard({});
-      setExpandedStandards({});
-    } catch (error) {
-      console.error('Error fetching standards data:', error);
     }
-  };
+
+    setSectionsByStandard({});
+    setExpandedStandards({});
+  } catch (error) {
+    Alert.alert('Error', 'Failed to load standards.');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleAcademicYearChange = (yearId) => {
     setSelectedYear(yearId);

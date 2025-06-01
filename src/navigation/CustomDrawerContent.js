@@ -130,12 +130,13 @@ const CustomDrawerContent = () => {
       icon: 'currency-inr',
       permissions: ['view_fee'],
       children: [
-        { label: 'Standard Fee', permissions: ['view_fee'] },
-        { label: 'Fee List', permissions: ['view_feepayment'] },
-        { label: 'Payments', permissions: ['view_feepayment'] },
+        { label: 'Fee Structure', permissions: ['view_fee'] },
+        { label: 'Fee Types', permissions: ['view_fee'] },
+        { label: 'Student Fee Status', permissions: ['view_fee'] },
+        { label: 'Payment History', permissions: ['view_fee'] },
         {
           label: 'Fee Analytics',
-          permissions: ['view_feesummary', 'view_totalfeesummary'],
+          permissions: ['view_feesummary', 'view_fee'],
         },
       ],
     },

@@ -19,12 +19,14 @@ const OrganisationAdminDashboard = ({ branch, year }) => {
     const [expenseExpanded, setExpenseExpanded] = useState(false);
 
     useEffect(() => {
+        if (!branch || !year) return; // Exit early if not valid
+
         const load = async () => {
             setLoading(true);
             try {
                 const apiModule = getDashboardApi('Organisation Admin');
                 const { fetchDashboardData } = apiModule;
-                const data = await fetchDashboardData(branch, year);
+                const data = await fetchDashboardData(branch, year); // both are IDs
                 const inv = data.inventoryDashboard || {};
 
                 const summary = (inv.monthly_tracking || []).reduce((acc, { status, total }) => {
@@ -43,6 +45,7 @@ const OrganisationAdminDashboard = ({ branch, year }) => {
 
         load();
     }, [branch, year]);
+
 
     const feeChartOptions = {
         title: {

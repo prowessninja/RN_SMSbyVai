@@ -28,13 +28,13 @@ const DASHBOARD_MAP = {
 const Dashboard = () => {
   // Hooks must be called unconditionally at top
   const { user, branches, academicYears } = useContext(AuthContext);
-  const [branch, setBranch] = useState(branches?.[0]?.id);
-  const [year, setYear] = useState(academicYears?.[0]?.id);
+  //const [branch, setBranch] = useState(branches?.[0]?.id);
+  //const [year, setYear] = useState(academicYears?.[0]?.id);
   const [showProfile, setShowProfile] = useState(true);
 
   if (!user) {
     return (
-      <View style={[styles.container, { flex: 1, justifyContent: 'center', alignItems: 'center' }]}>  
+      <View style={[styles.container, { flex: 1, justifyContent: 'center', alignItems: 'center' }]}>
         <Text>Loading user data...</Text>
       </View>
     );
@@ -51,6 +51,16 @@ const Dashboard = () => {
   };
 
   const animationSource = require('../../assets/default.json');
+
+  const {
+    selectedBranch,
+    setSelectedBranch,
+    selectedAcademicYear,
+    setSelectedAcademicYear,
+  } = useContext(AuthContext);
+
+  // Use these in your dropdowns
+
 
   return (
     <ScrollView
@@ -98,26 +108,28 @@ const Dashboard = () => {
           <View style={styles.dropdownRow}>
             <Dropdown
               style={styles.dropdown}
-              data={(academicYears || []).map(y => ({ label: y.name, value: y.id }))}
+              data={(academicYears || []).map(y => ({ ...y, label: y.name, value: y.id }))}
               labelField="label"
               valueField="value"
-              value={year}
+              value={selectedAcademicYear?.id}
               placeholder="Academic Year"
               placeholderStyle={styles.dropdownPlaceholder}
               selectedTextStyle={styles.dropdownText}
-              onChange={item => setYear(item.value)}
+              onChange={item => setSelectedAcademicYear(item)} // ✅ full object
             />
+
             <Dropdown
               style={styles.dropdown}
-              data={(branches || []).map(b => ({ label: b.name, value: b.id }))}
+              data={(branches || []).map(b => ({ ...b, label: b.name, value: b.id }))}
               labelField="label"
               valueField="value"
-              value={branch}
+              value={selectedBranch?.id}
               placeholder="Branch"
               placeholderStyle={styles.dropdownPlaceholder}
               selectedTextStyle={styles.dropdownText}
-              onChange={item => setBranch(item.value)}
+              onChange={item => setSelectedBranch(item)} // ✅ full object
             />
+
           </View>
         </View>
       )}
@@ -125,8 +137,8 @@ const Dashboard = () => {
       {/* Role‑based Dashboard */}
       {DashboardComponent ? (
         <DashboardComponent
-          branch={branch}
-          year={year}
+          branch={selectedBranch?.id}
+          year={selectedAcademicYear?.id}
           user={user}
         />
       ) : (

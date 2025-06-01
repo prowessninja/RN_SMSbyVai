@@ -14,7 +14,7 @@ import UserPermissionsScreen from '../screens/UserPermissionsScreen';
 import CreateRoleScreen from '../screens/CreateRoleScreen'; // adjust path if needed
 import BrachesScreen from '../screens/BranchesScreen';
 import BranchesScreen from '../screens/BranchesScreen';
-import StationeryScreen from '../screens/StationeryListScreen';
+//import StationeryScreen from '../screens/StationeryListScreen';
 import StationeryListScreen from '../screens/StationeryListScreen';
 import ClassAndSectionDetailsScreen from '../screens/ClassAndSectionDetailsScreen';
 import DepartmentDetailsScreen from '../screens/DepartmentDetailsScreen';
@@ -22,6 +22,10 @@ import StationeryTypesScreen from '../screens/StationeryTypesScreen';
 import InventoryScreen from '../screens/InventoryScreen';
 import InventoryTypesScreen from '../screens/InventoryTypesScreen';
 import InventoryAnalyticsScreen from '../screens/InventoryAnalyticsScreen';
+import FeeStructureScreen from '../screens/FeeStructureScreen';
+import FeeTypesScreen from '../screens/FeeTypesScreen';
+import StudentFeeStatus from '../screens/StudentFeeStatus';
+import FeePaymentHistoryScreen from '../screens/FeePaymentHistoryScreen';
 
 
 const Drawer = createDrawerNavigator();
@@ -45,6 +49,10 @@ function UsersStack() {
       <Stack.Screen name="Inventory" component={InventoryScreen} />
       <Stack.Screen name="Inventory Types" component={InventoryTypesScreen} />
       <Stack.Screen name="Inventory Analytics" component={InventoryAnalyticsScreen} />
+      <Stack.Screen name="Fee Structure" component={FeeStructureScreen} />
+      <Stack.Screen name="Fee Types" component={FeeTypesScreen} />
+      <Stack.Screen name="Student Fee Status" component={StudentFeeStatus} />
+      <Stack.Screen name="Payment History" component={FeePaymentHistoryScreen} />
     </Stack.Navigator>
   );
 }
@@ -71,6 +79,10 @@ const MainDrawer = () => {
       <Drawer.Screen name="Inventory" component={InventoryScreen} />
       <Drawer.Screen name="Inventory Types" component={InventoryTypesScreen} />
       <Drawer.Screen name="Inventory Analytics" component={InventoryAnalyticsScreen} />
+      <Drawer.Screen name="Fee Structure" component={FeeStructureScreen} />
+      <Drawer.Screen name="Fee Types" component={FeeTypesScreen} />
+      <Drawer.Screen name="Student Fee Status" component={StudentFeeStatus} />
+      <Drawer.Screen name="Payment History" component={FeePaymentHistoryScreen} />
     </Drawer.Navigator>
   );
 };

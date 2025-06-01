@@ -74,9 +74,12 @@ export const fetchAcademicYears = async () => {
 
 export const fetchStandardsForYearBranch = async (yearId, branchId, token) => {
   try {
+    console.log('[fetchStandardsForYearBranch] Params:', { yearId, branchId });
+    console.log('[fetchStandardsForYearBranch] Token:', token);
+
     const response = await api.get('standards/', {
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Token ${token}`,
       },
       params: {
         is_active: true,
@@ -84,13 +87,15 @@ export const fetchStandardsForYearBranch = async (yearId, branchId, token) => {
         branch: branchId,
       },
     });
-    console.log('Academic Year and Branch to Fetch Stationery:', yearId, branchId);
+
+    //console.log('[fetchStandardsForYearBranch] Raw response:', response);
     return response.data;
   } catch (error) {
-    console.error('Error fetching standards data:', error);
+    console.error('[fetchStandardsForYearBranch] ERROR:', error.response?.data || error.message);
     throw error;
   }
 };
+
 
 // ✅ New function to fetch sections by branch and standard
 export const fetchSectionsByBranchAndStandard = async (branchId, standardId) => {
@@ -139,7 +144,7 @@ export const fetchStationeryForYearBranch = async (yearId, branchId, token) => {
   try {
     const response = await api.get('stationary/', {
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Token ${token}`,
       },
       params: {
         year: yearId,
@@ -199,7 +204,7 @@ export const updateStandard = async (standard) => {
 
     const response = await api.put(`standards/${standard.id}/`, payload, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Token ${token}`,
       },
     });
 
@@ -925,13 +930,13 @@ export const updateInventory = async (inventoryId, payload) => {
 };
 
 export const createInventory = async (payload) => {
-    try {
-        const response = await api.post('/inventory/', payload);
-        return response.data;
-    } catch (error) {
-        console.error('[createInventory] Error:', error.response?.data || error.message);
-        throw error;
-    }
+  try {
+    const response = await api.post('/inventory/', payload);
+    return response.data;
+  } catch (error) {
+    console.error('[createInventory] Error:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 export const fetchRooms = async (branchId) => {
@@ -998,6 +1003,69 @@ export const deleteInventoryType = async (id) => {
 };
 
 
+const generateSquarePolygon = (lat, lng, delta = 0.0001) => ({
+  type: 'Polygon',
+  coordinates: [[
+    [lng - delta, lat - delta],
+    [lng - delta, lat + delta],
+    [lng + delta, lat + delta],
+    [lng + delta, lat - delta],
+    [lng - delta, lat - delta], // close the loop
+  ]]
+});
+
+export const saveBranch = async (branchData) => {
+  const token = await AsyncStorage.getItem('userToken');
+  const headers = { Authorization: `Token ${token}` };
+
+  const lat = parseFloat(branchData.latitude);
+  const lng = parseFloat(branchData.longitude);
+
+  const payload = {
+    name: branchData.name,
+    is_main_branch: branchData.is_main_branch === 'true' || branchData.is_main_branch === true,
+    center_point: {
+      type: 'Point',
+      coordinates: [lng, lat]
+    },
+    address: {
+      city: branchData.city,
+      state: branchData.state,
+      zip_code: branchData.zip_code,
+      landmark: branchData.landmark,
+      street: branchData.street,
+    }
+  };
+
+  if (branchData.id) {
+    // Edit: retain existing geo_location
+    const existing = await fetchBranchDetailsById(branchData.id);
+    payload.geo_location = existing.geo_location;
+    payload.id = branchData.id;
+
+    const response = await api.put(`branches/${branchData.id}/`, payload, { headers });
+    return response.data;
+  } else {
+    // Add: generate synthetic geo_location polygon
+    payload.geo_location = generateSquarePolygon(lat, lng);
+
+    const response = await api.post('branches/', payload, { headers });
+    return response.data;
+  }
+};
+
+// Update user email
+export const updateUserEmail = async (userId, newEmail) => {
+  try {
+    const payload = { id: userId, email: newEmail };
+    const response = await api.put(`users/${userId}/`, payload);
+    return response.data;
+  } catch (error) {
+    console.error('[updateUserEmail] Error:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
 export default {
   fetchActiveBranches,
   fetchAcademicYears,
@@ -1043,5 +1111,7 @@ export default {
   createInventoryType,
   updateInventoryType,
   deleteInventoryType,
+  saveBranch,
+  updateUserEmail,
 
 };

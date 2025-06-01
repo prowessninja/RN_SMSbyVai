@@ -50,6 +50,11 @@ const SettingsScreen = () => {
   const [showOverlay, setShowOverlay] = useState(false);
   const [overlayText, setOverlayText] = useState('');
 
+  const [emailModalVisible, setEmailModalVisible] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
+
+
   // dummy user info
   const email = user?.email || 'user@example.com';  // fallback if user not loaded yet
   const maskedPassword = '********';
@@ -71,9 +76,8 @@ const SettingsScreen = () => {
     navigation.navigate('Dashboard');
   };
 
-  const handleChangeEmail = () => {
-    console.log('Change Email pressed');
-  };
+  const handleChangeEmail = () => setEmailModalVisible(true);
+
 
   const handleResetPassword = () => setResetModalVisible(true);
 
@@ -151,6 +155,30 @@ const SettingsScreen = () => {
     }
   };
 
+  const handleEmailUpdate = async () => {
+    if (newEmail !== confirmEmail) {
+      setOverlayText('Emails do not match');
+      setShowOverlay(true);
+      setTimeout(() => setShowOverlay(false), 1500);
+      return;
+    }
+    try {
+      setOverlayText('Updating email…');
+      setShowOverlay(true);
+      await CommonAPI.updateUserEmail(user.id, newEmail);
+      setOverlayText('Email updated!');
+      setEmailModalVisible(false);
+      setResetEmail(newEmail); // also updates reset password default
+      user.email = newEmail; // reflect change in UI
+    } catch (err) {
+      console.error(err);
+      setOverlayText('Failed to update email');
+    } finally {
+      setTimeout(() => setShowOverlay(false), 1500);
+    }
+  };
+
+
   const renderYearCard = ({ item }) => (
     <View style={styles.card}>
       <TouchableOpacity
@@ -207,7 +235,7 @@ const SettingsScreen = () => {
                 color="#fff"
                 style={{ marginRight: 8 }}
               />
-              
+
             </TouchableOpacity>
           </View>
           <View style={styles.divider} />
@@ -340,6 +368,53 @@ const SettingsScreen = () => {
             </View>
           </View>
         </Modal>
+
+        <Modal
+          visible={emailModalVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setEmailModalVisible(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.resetModalContainer}>
+              <Text style={styles.resetModalTitle}>Change Email</Text>
+
+              <Text style={styles.inputLabel}>Current Email</Text>
+              <TextInput style={styles.input} value={user?.email} editable={false} />
+
+              <Text style={styles.inputLabel}>New Email</Text>
+              <TextInput
+                style={styles.input}
+                value={newEmail}
+                onChangeText={setNewEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholder="Enter new email"
+              />
+
+              <Text style={styles.inputLabel}>Confirm New Email</Text>
+              <TextInput
+                style={styles.input}
+                value={confirmEmail}
+                onChangeText={setConfirmEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholder="Re-enter new email"
+              />
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 24 }}>
+                <TouchableOpacity onPress={() => setEmailModalVisible(false)} style={[styles.cancelButton, { backgroundColor: '#bbb' }]}>
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleEmailUpdate} style={styles.submitButton}>
+                  <Text style={styles.buttonText}>Update</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+
 
         {/* Academic Years Cards */}
         <View style={[styles.section, { marginTop: 24 }]}>
