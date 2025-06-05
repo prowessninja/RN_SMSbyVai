@@ -191,6 +191,58 @@ export const updateFeeStructure = async (id, payload) => {
   }
 };
 
+// Fetch school-level fee analytics
+export const fetchSchoolAnalytics = async (branchId, academicYearId) => {
+  try {
+    const response = await api.get('fee-dashboard/school-analytics/', {
+      params: {
+        branch: branchId,
+        academic_year: academicYearId,
+      },
+    });
+    console.log('[fetchSchoolAnalytics] Success:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('[fetchSchoolAnalytics] Error:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Fetch overall fee collection stats
+export const fetchFeeCollectionStats = async (branchId, academicYearId) => {
+  try {
+    const response = await api.get('fee-dashboard/fee-collection-stats/', {
+      params: {
+        branch: branchId,
+        academic_year: academicYearId,
+      },
+    });
+    console.log('[fetchFeeCollectionStats] Success:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('[fetchFeeCollectionStats] Error:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Fetch fee type wise collection data
+export const fetchFeeTypeDistribution = async (branchId, academicYearId) => {
+  try {
+    const response = await api.get('fee-dashboard/fee-type-distribution/', {
+      params: {
+        branch: branchId,
+        academic_year: academicYearId,
+      },
+    });
+    console.log('[fetchFeeTypeDistribution] Success:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('[fetchFeeTypeDistribution] Error:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+
 
 
 

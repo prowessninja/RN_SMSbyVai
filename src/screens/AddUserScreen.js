@@ -236,7 +236,7 @@ const AddUserScreen = ({ navigation, route }) => {
         console.warn('⚠️ No user ID returned from createUserDetails');
       }
 
-      await createUserDetails(token, payload);
+      //await createUserDetails(token, payload);
 
       Alert.alert('Success', 'User created successfully!', [
         {

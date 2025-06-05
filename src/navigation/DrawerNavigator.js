@@ -26,6 +26,12 @@ import FeeStructureScreen from '../screens/FeeStructureScreen';
 import FeeTypesScreen from '../screens/FeeTypesScreen';
 import StudentFeeStatus from '../screens/StudentFeeStatus';
 import FeePaymentHistoryScreen from '../screens/FeePaymentHistoryScreen';
+import FeeAnalyticsScreen from '../screens/FeeAnalyticsScreen';
+import EventsScreen from '../screens/EventsScreen';
+import EditEventScreen from '../screens/EditEventScreen';
+import ClassAttendanceScreen from '../screens/ClassAttendanceScreen';
+import StaffAttendanceScreen from '../screens/StaffAttendanceScreen';
+import TimetableScreen from '../screens/TimetableScreen';
 
 
 const Drawer = createDrawerNavigator();
@@ -53,6 +59,12 @@ function UsersStack() {
       <Stack.Screen name="Fee Types" component={FeeTypesScreen} />
       <Stack.Screen name="Student Fee Status" component={StudentFeeStatus} />
       <Stack.Screen name="Payment History" component={FeePaymentHistoryScreen} />
+      <Stack.Screen name="Fee Analytics" component={FeeAnalyticsScreen} />
+      <Stack.Screen name="Events" component={EventsScreen} />
+      <Stack.Screen name="Class Attendance" component={ClassAttendanceScreen} />
+      <Stack.Screen name="Staff Attendance" component={StaffAttendanceScreen} />
+      <Stack.Screen name="Time Table" component={TimetableScreen} />
+
     </Stack.Navigator>
   );
 }
@@ -83,6 +95,12 @@ const MainDrawer = () => {
       <Drawer.Screen name="Fee Types" component={FeeTypesScreen} />
       <Drawer.Screen name="Student Fee Status" component={StudentFeeStatus} />
       <Drawer.Screen name="Payment History" component={FeePaymentHistoryScreen} />
+      <Drawer.Screen name="Fee Analytics" component={FeeAnalyticsScreen} />
+      <Drawer.Screen name="Events" component={EventsScreen} />
+      <Drawer.Screen name="EditEventScreen" component={EditEventScreen} />
+      <Drawer.Screen name="Class Attendance" component={ClassAttendanceScreen} />
+      <Drawer.Screen name="Staff Attendance" component={StaffAttendanceScreen} />
+      <Drawer.Screen name="Time Table" component={TimetableScreen} />
     </Drawer.Navigator>
   );
 };
